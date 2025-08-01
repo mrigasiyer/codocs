@@ -1,0 +1,44 @@
+# Node.js dependencies
+node_modules/
+npm-debug.log
+yarn-error.log
+package-lock.json
+
+# Build output
+dist/
+build/
+
+# Logs
+logs
+*.log
+logs/*
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# MacOS files
+.DS_Store
+
+# IDE files
+.vscode/
+.idea/
+
+# Docker
+docker-compose.override.yml
+.docker/
+
+# Misc
+*.swp
+*.swo
+*.tmp
+*.bak
+
+# Coverage / test outputs
+coverage/
+*.lcov
+
+# Cache
+.cache/
+.next/

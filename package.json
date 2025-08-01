@@ -1,0 +1,5 @@
+{
+  "devDependencies": {
+    "y-websocket": "^3.0.0"
+  }
+}
