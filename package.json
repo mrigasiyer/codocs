@@ -1,5 +1,8 @@
 {
   "devDependencies": {
     "y-websocket": "^3.0.0"
+  },
+  "dependencies": {
+    "react-router-dom": "^7.7.1"
   }
 }

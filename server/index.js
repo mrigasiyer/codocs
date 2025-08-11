@@ -6,6 +6,7 @@ const WebSocket = require("ws");
 const Y = require("yjs");
 const connectDB = require("./db");
 const YDocModel = require("./models/YDoc");
+const Room = require("./models/Room");
 
 const app = express();
 app.use(cors());
@@ -13,6 +14,37 @@ app.use(express.json());
 
 // ✅ Connect to MongoDB
 connectDB();
+
+app.get("/api/rooms", async (req, res) => {
+  try{
+    const rooms = await Room.find().sort({ createdAt: -1 });
+    res.json(rooms);
+  } catch (err) {
+    res.status(500).json({ error: "Failed to fetch rooms"});
+  }
+});
+
+app.post("/api/rooms/", async(req, res) => {
+  const { name } = req.body;
+
+  if(!name) {
+    return res.status(400).json({ error: "Room name is required" });
+  }
+
+  try{
+    let room = await Room.findOne({ name });
+
+    if(!room) {
+      room = await Room.create({ name });
+    }
+
+    res.json(room);
+  } catch (err) {
+    res.status(500).json({ error : "Error creating room"})
+  }
+
+
+})
 
 const server = http.createServer(app);
 const io = new Server(server, { cors: { origin: "*" } });

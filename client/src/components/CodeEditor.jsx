@@ -2,19 +2,22 @@ import Editor from "@monaco-editor/react";
 import * as Y from "yjs";
 import { WebsocketProvider } from "y-websocket";
 import { MonacoBinding } from "y-monaco";
+import { useParams } from "react-router-dom";
 
 export default function CodeEditor() {
+  const { roomId } = useParams();
+
   function handleEditorMount(editor) {
     const ydoc = new Y.Doc();
 
     // ✅ Connect to Yjs server
     const provider = new WebsocketProvider(
       "ws://localhost:3001",
-      "codocs-room",
+      roomId,
       ydoc
     );
 
-    const yText = ydoc.getText("codocs");
+    const yText = ydoc.getText(roomId);
 
     provider.on("status", (event) => {
       console.log("Yjs status:", event.status);

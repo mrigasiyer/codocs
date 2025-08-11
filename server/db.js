@@ -1,10 +1,12 @@
 const mongoose = require("mongoose");
+require('dotenv').config();
 
+const uri = process.env.MONGO_URI;
 
 const connectDB = async () => {
   try {
     console.log("🔗 Connecting to MongoDB...");
-    await mongoose.connect("mongodb://localhost:27017/codocs", {
+    await mongoose.connect(uri, {
       useNewUrlParser: true,
       useUnifiedTopology: true,
     });
