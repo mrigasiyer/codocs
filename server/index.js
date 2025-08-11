@@ -64,9 +64,13 @@ async function setupWSConnection(ws, roomName) {
   try {
     const dbDoc = await YDocModel.findOne({ room: roomName });
     if (dbDoc && dbDoc.state) {
-      console.log("📂 Loading state from MongoDB...");
-      const uint8State = new Uint8Array(dbDoc.state.buffer, dbDoc.state.byteOffset, dbDoc.state.byteLength);
-      Y.applyUpdate(doc, uint8State);
+      console.log("📂 Loading state from MongoDB...", dbDoc.state.length, "bytes");
+      const state = new Uint8Array(
+        dbDoc.state.buffer,
+        dbDoc.state.byteOffset,
+        dbDoc.state.byteLength
+      );
+      Y.applyUpdate(doc, state);
     } else {
       console.log("🆕 Creating new room in DB...");
       await YDocModel.create({
@@ -108,10 +112,13 @@ async function setupWSConnection(ws, roomName) {
 }
 
 // ✅ Handle new WebSocket connections
-wss.on("connection", (ws) => {
-  console.log("🔗 Yjs client connected");
-  setupWSConnection(ws, "codocs-room");
+wss.on("connection", (ws, req) => {
+  const url = new URL(req.url, `http://${req.headers.host}`);
+  const roomTitle = url.pathname.slice(1); // "/alpha" -> "alpha"
+  console.log("🔗 Yjs client connected to room:", roomTitle);
+  setupWSConnection(ws, roomTitle); // ✅ not hard-coded
 });
+
 
 const PORT = 3001;
 server.listen(PORT, () => console.log(`🚀 Codocs server running on port ${PORT}`));

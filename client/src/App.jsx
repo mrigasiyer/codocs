@@ -8,9 +8,14 @@ function App() {
 
   useEffect(() => {
     fetch("http://localhost:3001/api/rooms")
-      .then((res) => res.join())
-      .then((data) => setRoomList(data))
-      .catch((err) => console.error("failed to fetch rooms", err));
+      .then((res) => res.json())
+      .then((data) => {
+        console.log("Fetched rooms:", data); 
+        setRoomList(data);
+      })
+      .catch((err) => {
+        console.error("❌ Failed to fetch rooms:", err); 
+      });
   }, []);
 
   function handleJoin() {

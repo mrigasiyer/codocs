@@ -12,7 +12,7 @@ export default function CodeEditor() {
 
     // ✅ Connect to Yjs server
     const provider = new WebsocketProvider(
-      "ws://localhost:3001",
+      "ws://localhost:3001/",
       roomId,
       ydoc
     );
