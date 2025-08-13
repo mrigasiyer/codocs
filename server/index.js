@@ -3,6 +3,7 @@ const http = require("http");
 const cors = require("cors");
 const { Server } = require("socket.io");
 const WebSocket = require("ws");
+const { setupWSConnection } = require("y-websocket/bin/utils");
 const Y = require("yjs");
 const connectDB = require("./db");
 const YDocModel = require("./models/YDoc");
@@ -16,109 +17,145 @@ app.use(express.json());
 connectDB();
 
 app.get("/api/rooms", async (req, res) => {
-  try{
+  try {
     const rooms = await Room.find().sort({ createdAt: -1 });
     res.json(rooms);
   } catch (err) {
-    res.status(500).json({ error: "Failed to fetch rooms"});
+    res.status(500).json({ error: "Failed to fetch rooms" });
   }
 });
 
-app.post("/api/rooms/", async(req, res) => {
+app.post("/api/rooms/", async (req, res) => {
   const { name } = req.body;
 
-  if(!name) {
+  if (!name) {
     return res.status(400).json({ error: "Room name is required" });
   }
 
-  try{
+  try {
     let room = await Room.findOne({ name });
 
-    if(!room) {
+    if (!room) {
       room = await Room.create({ name });
     }
 
     res.json(room);
   } catch (err) {
-    res.status(500).json({ error : "Error creating room"})
+    res.status(500).json({ error: "Error creating room" });
   }
-
-
-})
+});
 
 const server = http.createServer(app);
 const io = new Server(server, { cors: { origin: "*" } });
 
 io.on("connection", (socket) => {
   console.log("✅ Socket.io user connected:", socket.id);
-  socket.on("disconnect", () => console.log("❌ Socket.io user disconnected:", socket.id));
+  socket.on("disconnect", () =>
+    console.log("❌ Socket.io user disconnected:", socket.id)
+  );
 });
 
-const wss = new WebSocket.Server({ server });
+// ✅ Use y-websocket's built-in WebSocket server
+const wss = new WebSocket.Server({ noServer: true });
 
-// ✅ Main Yjs Persistence Logic
-async function setupWSConnection(ws, roomName) {
-  let doc = new Y.Doc();
+// Custom persistence handler for y-websocket
+const persistence = {
+  bindState: async (docName, ydoc) => {
+    console.log(`🔧 Binding state for room: ${docName}`);
 
-  // 🔹 Load full state from MongoDB if exists
-  try {
-    const dbDoc = await YDocModel.findOne({ room: roomName });
-    if (dbDoc && dbDoc.state) {
-      console.log("📂 Loading state from MongoDB...", dbDoc.state.length, "bytes");
-      const state = new Uint8Array(
-        dbDoc.state.buffer,
-        dbDoc.state.byteOffset,
-        dbDoc.state.byteLength
-      );
-      Y.applyUpdate(doc, state);
-    } else {
-      console.log("🆕 Creating new room in DB...");
-      await YDocModel.create({
-        room: roomName,
-        state: Buffer.from(Y.encodeStateAsUpdate(doc)),
-      });
+    try {
+      const dbDoc = await YDocModel.findOne({ room: docName });
+      if (dbDoc && dbDoc.state && dbDoc.state.length > 0) {
+        console.log(
+          `📂 Loading state from MongoDB for ${docName}: ${dbDoc.state.length} bytes`
+        );
+        const state = new Uint8Array(
+          dbDoc.state.buffer,
+          dbDoc.state.byteOffset,
+          dbDoc.state.byteLength
+        );
+        Y.applyUpdate(ydoc, state);
+        console.log(`✅ State loaded successfully for ${docName}`);
+      } else {
+        console.log(`🆕 No existing state found for ${docName}`);
+      }
+    } catch (err) {
+      console.error(`❌ Error loading state for ${docName}:`, err);
     }
-  } catch (err) {
-    console.error("❌ Error loading state:", err);
+  },
+
+  writeState: async (docName, ydoc) => {
+    try {
+      const state = Y.encodeStateAsUpdate(ydoc);
+      const buffer = Buffer.from(state);
+
+      // Don't save if the document is essentially empty (just default text)
+      const yText = ydoc.getText("monaco");
+      const textContent = yText.toString().trim();
+
+      // Check for duplicate default text
+      const defaultTextCount = (
+        textContent.match(/\/\/ Start coding together\.\.\./g) || []
+      ).length;
+
+      // If it's just the default text or empty, don't save yet
+      if (textContent === "" || textContent === "// Start coding together...") {
+        console.log(
+          `⏭️  Skipping save for ${docName} - document is empty or just default text`
+        );
+        return;
+      }
+
+      // If there are multiple instances of default text, don't save
+      if (defaultTextCount > 1) {
+        console.log(
+          `⚠️  Skipping save for ${docName} - document has ${defaultTextCount} instances of default text`
+        );
+        return;
+      }
+
+      console.log(`💾 Writing state for ${docName}: ${buffer.length} bytes`);
+      console.log(`📝 Text content: "${textContent.substring(0, 50)}..."`);
+
+      await YDocModel.findOneAndUpdate(
+        { room: docName },
+        { state: buffer },
+        { upsert: true, new: true }
+      );
+
+      console.log(
+        `💾 State saved to MongoDB for ${docName}: ${buffer.length} bytes`
+      );
+    } catch (err) {
+      console.error(`❌ Error saving state for ${docName}:`, err);
+    }
+  },
+};
+
+// Set up persistence
+require("y-websocket/bin/utils").setPersistence(persistence);
+
+// Handle WebSocket connections
+wss.on("connection", setupWSConnection);
+
+// Handle HTTP upgrade to WebSocket
+server.on("upgrade", (request, socket, head) => {
+  const pathname = request.url;
+
+  if (pathname === "/") {
+    // Handle root path
+    socket.destroy();
+    return;
   }
 
-  // 🔹 Send current state to new client
-  ws.send(Y.encodeStateAsUpdate(doc));
+  console.log(`🔗 WebSocket upgrade request for: ${pathname}`);
 
-  ws.on("message", async (message) => {
-    try {
-      const update = new Uint8Array(message);
-      Y.applyUpdate(doc, update);
-
-      // Broadcast update to all other clients
-      wss.clients.forEach((client) => {
-        if (client !== ws && client.readyState === WebSocket.OPEN) {
-          client.send(message);
-        }
-      });
-
-      // ✅ Save full state to MongoDB
-      const fullState = Buffer.from(Y.encodeStateAsUpdate(doc));
-      await YDocModel.findOneAndUpdate(
-        { room: roomName },
-        { state: fullState },
-        { upsert: true }
-      );
-      console.log(`💾 Saved full state to MongoDB (${fullState.length} bytes)`);
-    } catch (err) {
-      console.error("❌ Error processing Yjs update:", err);
-    }
+  wss.handleUpgrade(request, socket, head, (ws) => {
+    wss.emit("connection", ws, request);
   });
-}
-
-// ✅ Handle new WebSocket connections
-wss.on("connection", (ws, req) => {
-  const url = new URL(req.url, `http://${req.headers.host}`);
-  const roomTitle = url.pathname.slice(1); // "/alpha" -> "alpha"
-  console.log("🔗 Yjs client connected to room:", roomTitle);
-  setupWSConnection(ws, roomTitle); // ✅ not hard-coded
 });
 
-
 const PORT = 3001;
-server.listen(PORT, () => console.log(`🚀 Codocs server running on port ${PORT}`));
+server.listen(PORT, () =>
+  console.log(`🚀 Codocs server running on port ${PORT}`)
+);
