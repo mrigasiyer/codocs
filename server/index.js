@@ -89,33 +89,8 @@ const persistence = {
       const state = Y.encodeStateAsUpdate(ydoc);
       const buffer = Buffer.from(state);
 
-      // Don't save if the document is essentially empty (just default text)
-      const yText = ydoc.getText("monaco");
-      const textContent = yText.toString().trim();
-
-      // Check for duplicate default text
-      const defaultTextCount = (
-        textContent.match(/\/\/ Start coding together\.\.\./g) || []
-      ).length;
-
-      // If it's just the default text or empty, don't save yet
-      if (textContent === "" || textContent === "// Start coding together...") {
-        console.log(
-          `⏭️  Skipping save for ${docName} - document is empty or just default text`
-        );
-        return;
-      }
-
-      // If there are multiple instances of default text, don't save
-      if (defaultTextCount > 1) {
-        console.log(
-          `⚠️  Skipping save for ${docName} - document has ${defaultTextCount} instances of default text`
-        );
-        return;
-      }
-
+      // Always save the state, even if empty - this ensures empty documents are persisted
       console.log(`💾 Writing state for ${docName}: ${buffer.length} bytes`);
-      console.log(`📝 Text content: "${textContent.substring(0, 50)}..."`);
 
       await YDocModel.findOneAndUpdate(
         { room: docName },

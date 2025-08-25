@@ -3,13 +3,15 @@ import * as Y from "yjs";
 import { WebsocketProvider } from "y-websocket";
 import { MonacoBinding } from "y-monaco";
 import { useParams } from "react-router-dom";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 
 export default function CodeEditor() {
   const { roomId } = useParams();
   const providerRef = useRef(null);
   const ydocRef = useRef(null);
   const initializedRef = useRef(false);
+  const [connectionStatus, setConnectionStatus] = useState("Connecting...");
+  const [isConnected, setIsConnected] = useState(false);
 
   useEffect(() => {
     return () => {
@@ -40,6 +42,16 @@ export default function CodeEditor() {
 
     provider.on("status", (event) => {
       console.log("Yjs status:", event.status);
+      if (event.status === "connected") {
+        setConnectionStatus("Connected, syncing...");
+        setIsConnected(true);
+      } else if (event.status === "disconnected") {
+        setConnectionStatus("Disconnected");
+        setIsConnected(false);
+      } else if (event.status === "connecting") {
+        setConnectionStatus("Connecting...");
+        setIsConnected(false);
+      }
     });
 
     provider.on("sync", (isSynced) => {
@@ -67,20 +79,9 @@ export default function CodeEditor() {
               currentContent.substring(0, 100)
             );
 
-            // Only set initial content if text is truly empty and this is a new document
-            if (currentLength === 0) {
-              console.log("📝 Setting initial content for empty document");
-              yText.insert(0, "// Start coding together...\n");
-            } else {
-              console.log(
-                "📝 Document already has content, not adding default text"
-              );
-              console.log("📝 Content length:", currentLength);
-              console.log(
-                "📝 Content preview:",
-                currentContent.substring(0, 100)
-              );
-            }
+            // Document is ready - no need to add default text
+            console.log("📝 Document ready, no default text needed");
+            setConnectionStatus("Connected");
           }, 100); // Small delay to ensure full sync
 
           initializedRef.current = true;
@@ -90,6 +91,8 @@ export default function CodeEditor() {
         }
       } else if (isSynced && initializedRef.current) {
         console.log("🔄 Document already initialized, skipping setup");
+        setConnectionStatus("Connected");
+        setIsConnected(true);
       }
     });
 
@@ -98,27 +101,20 @@ export default function CodeEditor() {
       console.log("📝 Text changed:", event.changes);
       console.log("📝 Current text length:", yText.length);
       console.log("📝 Text preview:", yText.toString().substring(0, 100));
-
-      // Log if we're getting duplicate content
-      const text = yText.toString();
-      const defaultTextCount = (
-        text.match(/\/\/ Start coding together\.\.\./g) || []
-      ).length;
-      if (defaultTextCount > 1) {
-        console.warn(
-          `⚠️  Warning: Found ${defaultTextCount} instances of default text!`
-        );
-      }
     });
 
     // Handle connection errors
     provider.on("connection-error", (err) => {
       console.error("❌ WebSocket connection error:", err);
+      setConnectionStatus("Connection Error");
+      setIsConnected(false);
     });
 
     // Handle connection close
     provider.on("close", () => {
       console.log("🔌 WebSocket connection closed");
+      setConnectionStatus("Disconnected");
+      setIsConnected(false);
     });
 
     // Debug: Log document state
@@ -130,11 +126,25 @@ export default function CodeEditor() {
   }
 
   return (
-    <Editor
-      height="90vh"
-      defaultLanguage="javascript"
-      defaultValue="// Start coding together..."
-      onMount={handleEditorMount}
-    />
+    <div>
+      {/* Connection Status Bar */}
+      <div className="bg-gray-100 px-4 py-2 border-b border-gray-200 flex items-center justify-between">
+        <div className="flex items-center space-x-2">
+          <div
+            className={`w-2 h-2 rounded-full ${
+              isConnected ? "bg-green-500" : "bg-red-500"
+            }`}
+          ></div>
+          <span className="text-sm text-gray-600">{connectionStatus}</span>
+        </div>
+        <span className="text-xs text-gray-500">Room: {roomId}</span>
+      </div>
+
+      <Editor
+        height="calc(90vh - 48px)"
+        defaultLanguage="javascript"
+        onMount={handleEditorMount}
+      />
+    </div>
   );
 }

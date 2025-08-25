@@ -10,11 +10,11 @@ function App() {
     fetch("http://localhost:3001/api/rooms")
       .then((res) => res.json())
       .then((data) => {
-        console.log("Fetched rooms:", data); 
+        console.log("Fetched rooms:", data);
         setRoomList(data);
       })
       .catch((err) => {
-        console.error("❌ Failed to fetch rooms:", err); 
+        console.error("❌ Failed to fetch rooms:", err);
       });
   }, []);
 
