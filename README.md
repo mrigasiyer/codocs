@@ -4,7 +4,7 @@ Codocs is a **real-time collaborative code editor** built with **React, Yjs, Web
 
 ---
 
-## ✨ Features (Phase 1 Complete!)
+## ✨ Features (At current state)
 
 - 🏠 **Multi-Room Support** → Join or create rooms via `/room/:roomId`
 - 📂 **Room List** → See available rooms and enter them
@@ -32,11 +32,11 @@ Codocs is a **real-time collaborative code editor** built with **React, Yjs, Web
 ```bash
 git clone https://github.com/yourusername/codocs.git
 cd codocs
+```
 
 ### 2. Setup Server
+
+```bash
 cd server
 npm install
-
-
-
 ```
