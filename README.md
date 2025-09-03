@@ -40,3 +40,9 @@ cd codocs
 cd server
 npm install
 ```
+
+#### Create a .env file in the server/ directory:
+
+```env
+MONGO_URI=mongodb+srv://<your-mongodb-uri>
+```
