@@ -1,88 +1,68 @@
-import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import {
+  BrowserRouter as Router,
+  Routes,
+  Route,
+  Navigate,
+} from "react-router-dom";
+import { AuthProvider, useAuth } from "./contexts/AuthContext";
+import Login from "./components/Login";
+import Home from "./pages/Home";
+import CodeEditor from "./components/CodeEditor";
 
-function App() {
-  const [roomName, setRoomName] = useState("");
-  const [roomList, setRoomList] = useState([]);
-  const navigate = useNavigate();
+// Protected route component
+const ProtectedRoute = ({ children }) => {
+  const { isAuthenticated, loading } = useAuth();
 
-  useEffect(() => {
-    fetch("http://localhost:3001/api/rooms")
-      .then((res) => res.json())
-      .then((data) => {
-        console.log("Fetched rooms:", data);
-        setRoomList(data);
-      })
-      .catch((err) => {
-        console.error("❌ Failed to fetch rooms:", err);
-      });
-  }, []);
-
-  function handleJoin() {
-    if (!roomName.trim()) return;
-
-    fetch("http://localhost:3001/api/rooms", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name: roomName.trim() }),
-    })
-      .then((res) => res.json())
-      .then(() => {
-        navigate(`/room/${roomName.trim()}`);
-      })
-      .catch((err) => console.error("Error joining room", err));
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <h2 className="text-xl font-semibold text-gray-700">Loading...</h2>
+        </div>
+      </div>
+    );
   }
 
+  return isAuthenticated ? children : <Navigate to="/login" />;
+};
+
+function AppRoutes() {
+  const { isAuthenticated } = useAuth();
+
   return (
-    <div style={{ padding: "3rem", textAlign: "center" }}>
-      <h1>🧠 Codocs</h1>
-      <p>Join or create a collaborative coding room:</p>
-      <input
-        value={roomName}
-        onChange={(e) => setRoomName(e.target.value)}
-        placeholder="Enter room name"
-        style={{
-          padding: "0.5rem 1rem",
-          fontSize: "1rem",
-          width: "250px",
-          marginRight: "0.5rem",
-        }}
-      />
-      <button
-        onClick={handleJoin}
-        style={{
-          padding: "0.5rem 1rem",
-          fontSize: "1rem",
-          cursor: "pointer",
-        }}
-      >
-        Go →
-      </button>
-      {roomList.length > 0 && (
-        <div style={{ marginTop: "2rem" }}>
-          <h3>🌐 Available Rooms:</h3>
-          <ul style={{ listStyle: "none", padding: 0 }}>
-            {roomList.map((room) => (
-              <li key={room._id}>
-                <button
-                  onClick={() => navigate(`/room/${room.name}`)}
-                  style={{
-                    background: "none",
-                    border: "none",
-                    color: "blue",
-                    textDecoration: "underline",
-                    fontSize: "1rem",
-                    cursor: "pointer",
-                  }}
-                >
-                  {room.name}
-                </button>
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
-    </div>
+    <Router>
+      <Routes>
+        <Route
+          path="/login"
+          element={isAuthenticated ? <Navigate to="/" /> : <Login />}
+        />
+        <Route
+          path="/"
+          element={
+            <ProtectedRoute>
+              <Home />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/room/:roomId"
+          element={
+            <ProtectedRoute>
+              <CodeEditor />
+            </ProtectedRoute>
+          }
+        />
+      </Routes>
+    </Router>
+  );
+}
+
+function App() {
+  return (
+    <AuthProvider>
+      <AppRoutes />
+    </AuthProvider>
   );
 }
 

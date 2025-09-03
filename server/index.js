@@ -9,12 +9,18 @@ const connectDB = require("./db");
 const YDocModel = require("./models/YDoc");
 const Room = require("./models/Room");
 
+// Import auth routes
+const authRouter = require("./routes/auth");
+
 const app = express();
 app.use(cors());
 app.use(express.json());
 
 // ✅ Connect to MongoDB
 connectDB();
+
+// Add auth routes
+app.use("/api/auth", authRouter);
 
 app.get("/api/rooms", async (req, res) => {
   try {
