@@ -48,15 +48,36 @@ MONGO_URI=mongodb+srv://<your-mongodb-uri>
 ```
 
 ##### Start the server:
+
 ```bash
 node index.js
 ```
+
 ##### Expected logs:
+
 ```arduino
 🔗 Connecting to MongoDB...
 ✅ MongoDB connected
 🚀 Codocs server running on port 3001
 ```
 
+##### Hot reload (optional):
 
+```bash
+npm install -g nodemon
+nodemon index.js
+```
 
+### 3. Setup Client
+
+```bash
+cd ../client
+npm install
+npm run dev
+```
+
+##### Open your browser at:
+
+```arduino
+http://localhost:5173/
+```
