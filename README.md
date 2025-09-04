@@ -41,8 +41,22 @@ cd server
 npm install
 ```
 
-#### Create a .env file in the server/ directory:
+##### Create a .env file in the server/ directory:
 
 ```env
 MONGO_URI=mongodb+srv://<your-mongodb-uri>
 ```
+
+##### Start the server:
+```bash
+node index.js
+```
+##### Expected logs:
+```arduino
+🔗 Connecting to MongoDB...
+✅ MongoDB connected
+🚀 Codocs server running on port 3001
+```
+
+
+
