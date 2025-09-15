@@ -5,12 +5,39 @@ const { Server } = require("socket.io");
 const WebSocket = require("ws");
 const { setupWSConnection } = require("y-websocket/bin/utils");
 const Y = require("yjs");
+const jwt = require("jsonwebtoken");
 const connectDB = require("./db");
 const YDocModel = require("./models/YDoc");
 const Room = require("./models/Room");
+const User = require("./models/User");
 
 // Import auth routes
 const authRouter = require("./routes/auth");
+
+// JWT secret (should match auth.js)
+const JWT_SECRET = "your-secret-key-for-now";
+
+// Authentication middleware
+const authenticateToken = async (req, res, next) => {
+  const authHeader = req.headers["authorization"];
+  const token = authHeader && authHeader.split(" ")[1];
+
+  if (!token) {
+    return res.status(401).json({ error: "Access token required" });
+  }
+
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET);
+    const user = await User.findById(decoded.userId).select("-password");
+    if (!user) {
+      return res.status(401).json({ error: "Invalid token" });
+    }
+    req.user = user;
+    next();
+  } catch (error) {
+    return res.status(403).json({ error: "Invalid or expired token" });
+  }
+};
 
 const app = express();
 app.use(cors());
@@ -22,16 +49,27 @@ connectDB();
 // Add auth routes
 app.use("/api/auth", authRouter);
 
-app.get("/api/rooms", async (req, res) => {
+// Get rooms accessible to the authenticated user
+app.get("/api/rooms", authenticateToken, async (req, res) => {
   try {
-    const rooms = await Room.find().sort({ createdAt: -1 });
+    const userId = req.user._id;
+
+    const rooms = await Room.find({
+      $or: [{ owner: userId }, { "sharedWith.user": userId }],
+    })
+      .populate("owner", "username displayName")
+      .populate("sharedWith.user", "username displayName")
+      .sort({ createdAt: -1 });
+
     res.json(rooms);
   } catch (err) {
+    console.error("Error fetching rooms:", err);
     res.status(500).json({ error: "Failed to fetch rooms" });
   }
 });
 
-app.post("/api/rooms/", async (req, res) => {
+// Create a new room
+app.post("/api/rooms", authenticateToken, async (req, res) => {
   const { name } = req.body;
 
   if (!name) {
@@ -39,15 +77,145 @@ app.post("/api/rooms/", async (req, res) => {
   }
 
   try {
-    let room = await Room.findOne({ name });
-
-    if (!room) {
-      room = await Room.create({ name });
+    // Check if room name already exists
+    const existingRoom = await Room.findOne({ name });
+    if (existingRoom) {
+      return res.status(400).json({ error: "Room name already exists" });
     }
 
-    res.json(room);
+    const room = await Room.create({
+      name,
+      owner: req.user._id,
+    });
+
+    await room.populate("owner", "username displayName");
+    res.status(201).json(room);
   } catch (err) {
+    console.error("Error creating room:", err);
     res.status(500).json({ error: "Error creating room" });
+  }
+});
+
+// Share a room with another user
+app.post("/api/rooms/:roomName/share", authenticateToken, async (req, res) => {
+  const { roomName } = req.params;
+  const { username } = req.body;
+
+  if (!username) {
+    return res.status(400).json({ error: "Username is required" });
+  }
+
+  try {
+    const room = await Room.findOne({ name: roomName });
+    if (!room) {
+      return res.status(404).json({ error: "Room not found" });
+    }
+
+    // Check if user is the owner
+    if (room.owner.toString() !== req.user._id.toString()) {
+      return res
+        .status(403)
+        .json({ error: "Only room owner can share the room" });
+    }
+
+    // Find the user to share with
+    const userToShare = await User.findOne({ username });
+    if (!userToShare) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    // Check if already shared
+    const alreadyShared = room.sharedWith.some(
+      (share) => share.user.toString() === userToShare._id.toString()
+    );
+
+    if (alreadyShared) {
+      return res
+        .status(400)
+        .json({ error: "Room already shared with this user" });
+    }
+
+    // Add user to shared list
+    room.sharedWith.push({
+      user: userToShare._id,
+      sharedBy: req.user._id,
+    });
+
+    await room.save();
+    await room.populate("sharedWith.user", "username displayName");
+
+    res.json({ message: "Room shared successfully", room });
+  } catch (err) {
+    console.error("Error sharing room:", err);
+    res.status(500).json({ error: "Error sharing room" });
+  }
+});
+
+// Remove access from a user
+app.delete(
+  "/api/rooms/:roomId/share/:userId",
+  authenticateToken,
+  async (req, res) => {
+    const { roomId, userId } = req.params;
+
+    try {
+      const room = await Room.findById(roomId);
+      if (!room) {
+        return res.status(404).json({ error: "Room not found" });
+      }
+
+      // Check if user is the owner
+      if (room.owner.toString() !== req.user._id.toString()) {
+        return res
+          .status(403)
+          .json({ error: "Only room owner can remove access" });
+      }
+
+      // Remove user from shared list
+      room.sharedWith = room.sharedWith.filter(
+        (share) => share.user.toString() !== userId
+      );
+
+      await room.save();
+      res.json({ message: "Access removed successfully" });
+    } catch (err) {
+      console.error("Error removing access:", err);
+      res.status(500).json({ error: "Error removing access" });
+    }
+  }
+);
+
+// Check if user has access to a specific room
+app.get("/api/rooms/:roomName/access", authenticateToken, async (req, res) => {
+  const { roomName } = req.params;
+
+  try {
+    const room = await Room.findOne({ name: roomName })
+      .populate("owner", "username displayName _id")
+      .populate("sharedWith.user", "username displayName _id");
+    if (!room) {
+      return res.status(404).json({ error: "Room not found" });
+    }
+
+    const userId = req.user._id.toString();
+    const ownerId =
+      room.owner && room.owner._id
+        ? room.owner._id.toString()
+        : room.owner.toString();
+    const hasAccess =
+      ownerId === userId ||
+      room.sharedWith.some((share) => {
+        const sharedUserId =
+          share.user && share.user._id
+            ? share.user._id.toString()
+            : share.user.toString();
+        return sharedUserId === userId;
+      });
+
+    res.json({ hasAccess, room: hasAccess ? room : null });
+  } catch (err) {
+    console.error("Error checking access:", err);
+    res.status(500).json({ error: "Error checking access" });
   }
 });
 

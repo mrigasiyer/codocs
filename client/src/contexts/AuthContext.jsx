@@ -16,14 +16,39 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Check if we have a stored token
-    if (token) {
-      // For now, just set loading to false
-      // Later we'll verify the token with the server
+    const verifyToken = async () => {
+      if (token) {
+        try {
+          // Verify token with server
+          const response = await fetch("http://localhost:3001/api/rooms", {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          });
+
+          if (response.ok) {
+            // Token is valid, get user info from localStorage or make a separate call
+            const userData = localStorage.getItem("codocs-user");
+            if (userData) {
+              setUser(JSON.parse(userData));
+            }
+          } else {
+            // Token is invalid, clear it
+            localStorage.removeItem("codocs-token");
+            localStorage.removeItem("codocs-user");
+            setToken(null);
+          }
+        } catch (error) {
+          console.error("Token verification failed:", error);
+          localStorage.removeItem("codocs-token");
+          localStorage.removeItem("codocs-user");
+          setToken(null);
+        }
+      }
       setLoading(false);
-    } else {
-      setLoading(false);
-    }
+    };
+
+    verifyToken();
   }, [token]);
 
   const login = async (email, password) => {
@@ -41,6 +66,7 @@ export const AuthProvider = ({ children }) => {
         setToken(data.token);
         setUser(data.user);
         localStorage.setItem("codocs-token", data.token);
+        localStorage.setItem("codocs-user", JSON.stringify(data.user));
         return { success: true };
       } else {
         const error = await response.json();
@@ -66,6 +92,7 @@ export const AuthProvider = ({ children }) => {
         setToken(data.token);
         setUser(data.user);
         localStorage.setItem("codocs-token", data.token);
+        localStorage.setItem("codocs-user", JSON.stringify(data.user));
         return { success: true };
       } else {
         const error = await response.json();
@@ -80,6 +107,7 @@ export const AuthProvider = ({ children }) => {
     setUser(null);
     setToken(null);
     localStorage.removeItem("codocs-token");
+    localStorage.removeItem("codocs-user");
   };
 
   const value = {

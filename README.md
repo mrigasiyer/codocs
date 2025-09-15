@@ -21,7 +21,6 @@ Codocs is a **real-time collaborative code editor** built with **React, Yjs, Web
 - **Collaboration:** Yjs, y-monaco, y-websocket
 - **Backend:** Express, WebSocket (ws), Socket.IO (future events)
 - **Database:** MongoDB + Mongoose
-- **Dev Tools:** ESLint, dotenv
 
 ---
 
