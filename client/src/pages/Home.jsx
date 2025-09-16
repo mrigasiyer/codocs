@@ -108,20 +108,29 @@ export default function Home() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white">
       {/* Header */}
-      <div className="bg-white shadow">
+      <div className="bg-white/70 backdrop-blur border-b border-slate-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center py-6">
             <div className="flex items-center">
-              <h1 className="text-3xl font-bold text-gray-900">🧠 Codocs</h1>
-              <span className="ml-4 text-sm text-gray-500">
-                Welcome, {user?.displayName || user?.username}!
-              </span>
+              <img
+                src="/logo.jpg"
+                alt="Codocs logo"
+                className="h-9 w-9 rounded-md object-cover mr-3 shadow-sm ring-1 ring-slate-200"
+              />
+              <div>
+                <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 leading-tight">
+                  Codocs
+                </h1>
+                <span className="block text-xs sm:text-sm text-slate-500">
+                  Welcome, {user?.displayName || user?.username}!
+                </span>
+              </div>
             </div>
             <button
               onClick={handleLogout}
-              className="bg-red-600 text-white px-4 py-2 rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500"
+              className="bg-red-600 text-white px-4 py-2 rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 shadow-sm"
             >
               Logout
             </button>
@@ -132,23 +141,30 @@ export default function Home() {
       {/* Main Content */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Create New Room */}
-        <div className="bg-white rounded-lg shadow p-6 mb-8">
-          <h2 className="text-xl font-semibold text-gray-900 mb-4">
-            Create New Room
-          </h2>
-          <div className="flex space-x-4">
+        <div className="bg-white rounded-xl shadow-sm ring-1 ring-slate-200 p-6 mb-8">
+          <div className="flex items-start justify-between mb-4">
+            <div>
+              <h2 className="text-xl font-semibold text-slate-900">
+                Create New Room
+              </h2>
+              <p className="text-sm text-slate-500 mt-1">
+                Spin up a collaborative coding room and invite teammates.
+              </p>
+            </div>
+          </div>
+          <div className="flex flex-col sm:flex-row gap-3">
             <input
               type="text"
               value={roomName}
               onChange={(e) => setRoomName(e.target.value)}
               placeholder="Enter room name"
-              className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              onKeyPress={(e) => e.key === "Enter" && handleCreateRoom()}
+              className="flex-1 px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm"
+              onKeyDown={(e) => e.key === "Enter" && handleCreateRoom()}
             />
             <button
               onClick={handleCreateRoom}
               disabled={!roomName.trim() || loading}
-              className="bg-blue-600 text-white px-6 py-2 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="bg-blue-600 text-white px-6 py-2 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
             >
               {loading ? "Creating..." : "Create"}
             </button>
@@ -156,17 +172,18 @@ export default function Home() {
         </div>
 
         {/* Available Rooms */}
-        <div className="bg-white rounded-lg shadow">
-          <div className="px-6 py-4 border-b border-gray-200">
-            <h3 className="text-lg font-medium text-gray-900">
-              Available Rooms
+        <div className="bg-white rounded-xl shadow-sm ring-1 ring-slate-200">
+          <div className="px-6 py-4 border-b border-slate-200">
+            <h3 className="text-lg font-medium text-slate-900">
+              Recent Rooms
             </h3>
           </div>
           <div className="p-6">
             {roomList.length === 0 ? (
-              <p className="text-gray-500 text-center py-8">
-                No rooms available. Create your first room above!
-              </p>
+              <div className="text-slate-500 text-center py-10">
+                <div className="text-4xl mb-2">✨</div>
+                <p>No rooms yet. Create your first room above!</p>
+              </div>
             ) : (
               <div className="space-y-3">
                 {roomList.map((room) => {
@@ -183,14 +200,14 @@ export default function Home() {
                   return (
                     <div
                       key={room._id}
-                      className="flex items-center justify-between p-3 bg-gray-50 rounded-md hover:bg-gray-100"
+                      className="group flex items-center justify-between p-3 bg-slate-50 rounded-md hover:bg-white transition-colors ring-1 ring-slate-200 hover:ring-blue-200"
                     >
                       <div
                         className="flex-1 cursor-pointer"
                         onClick={() => navigate(`/room/${room.name}`)}
                       >
                         <div className="flex items-center space-x-2">
-                          <h4 className="font-medium text-gray-900">
+                          <h4 className="font-medium text-slate-900">
                             {room.name}
                           </h4>
                           <span
@@ -199,20 +216,20 @@ export default function Home() {
                                 ? "bg-blue-100 text-blue-800"
                                 : isShared
                                 ? "bg-green-100 text-green-800"
-                                : "bg-gray-100 text-gray-800"
+                                : "bg-slate-100 text-slate-800"
                             }`}
                           >
                             {accessType}
                           </span>
                         </div>
-                        <p className="text-sm text-gray-500">
+                        <p className="text-sm text-slate-600">
                           {isOwner
                             ? "You created this room"
                             : `Created by ${
                                 room.owner.displayName || room.owner.username
                               }`}
                         </p>
-                        <p className="text-xs text-gray-400">
+                        <p className="text-xs text-slate-400">
                           {new Date(room.createdAt).toLocaleDateString()}
                         </p>
                       </div>
@@ -223,12 +240,14 @@ export default function Home() {
                               e.stopPropagation();
                               setSharingRoom(room);
                             }}
-                            className="text-blue-600 hover:text-blue-800 text-sm px-2 py-1 rounded hover:bg-blue-50"
+                            className="text-blue-700 hover:text-blue-900 text-sm px-2 py-1 rounded hover:bg-blue-50"
                           >
                             Share
                           </button>
                         )}
-                        <span className="text-blue-600">→</span>
+                        <span className="text-slate-400 group-hover:text-blue-600 transition">
+                          →
+                        </span>
                       </div>
                     </div>
                   );
@@ -241,16 +260,16 @@ export default function Home() {
 
       {/* Share Room Modal */}
       {sharingRoom && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 w-96 max-w-md mx-4">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-96 max-w-md mx-4 shadow-xl ring-1 ring-slate-200">
+            <h3 className="text-lg font-semibold text-slate-900 mb-4">
               Share Room: {sharingRoom.name}
             </h3>
             <div className="space-y-4">
               <div>
                 <label
                   htmlFor="shareUsername"
-                  className="block text-sm font-medium text-gray-700 mb-1"
+                  className="block text-sm font-medium text-slate-700 mb-1"
                 >
                   Username
                 </label>
@@ -260,8 +279,8 @@ export default function Home() {
                   value={shareUsername}
                   onChange={(e) => setShareUsername(e.target.value)}
                   placeholder="Enter username to share with"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  onKeyPress={(e) =>
+                  className="w-full px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm"
+                  onKeyDown={(e) =>
                     e.key === "Enter" && handleShareRoom(sharingRoom.name)
                   }
                 />
@@ -279,7 +298,7 @@ export default function Home() {
                     setSharingRoom(null);
                     setShareUsername("");
                   }}
-                  className="flex-1 bg-gray-300 text-gray-700 px-4 py-2 rounded-md hover:bg-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-500"
+                  className="flex-1 bg-slate-200 text-slate-700 px-4 py-2 rounded-md hover:bg-slate-300 focus:outline-none focus:ring-2 focus:ring-slate-500"
                 >
                   Cancel
                 </button>

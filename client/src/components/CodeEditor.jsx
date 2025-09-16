@@ -9,7 +9,7 @@ import { useAuth } from "../contexts/AuthContext";
 export default function CodeEditor() {
   const { roomId } = useParams();
   const navigate = useNavigate();
-  const { token } = useAuth();
+  const { token, user } = useAuth();
   const providerRef = useRef(null);
   const ydocRef = useRef(null);
   const initializedRef = useRef(false);
@@ -21,6 +21,7 @@ export default function CodeEditor() {
   const [error, setError] = useState(null);
   const [roomInfo, setRoomInfo] = useState(null);
   const [showSharedModal, setShowSharedModal] = useState(false);
+  const [onlineUsers, setOnlineUsers] = useState([]);
 
   // Check room access on mount
   useEffect(() => {
@@ -65,10 +66,44 @@ export default function CodeEditor() {
     return () => {
       // Cleanup on unmount
       if (providerRef.current) {
+        try {
+          providerRef.current.awareness.setLocalState(null);
+        } catch (e) {
+          console.warn("Failed to clear local awareness state on unmount", e);
+        }
         providerRef.current.disconnect();
       }
     };
   }, []);
+
+  function getColorForId(id) {
+    const colors = [
+      "#2563eb",
+      "#16a34a",
+      "#dc2626",
+      "#7c3aed",
+      "#db2777",
+      "#ea580c",
+      "#0891b2",
+      "#4f46e5",
+    ];
+    let hash = 0;
+    for (let i = 0; i < String(id || "").length; i++) {
+      hash = (hash << 5) - hash + String(id)[i].charCodeAt(0);
+      hash |= 0;
+    }
+    const idx = Math.abs(hash) % colors.length;
+    return colors[idx];
+  }
+
+  function getInitials(name) {
+    const n = (name || "").trim();
+    if (!n) return "?";
+    const parts = n.split(/\s+/);
+    const first = parts[0]?.[0] || "";
+    const last = parts[1]?.[0] || "";
+    return (first + last).toUpperCase() || first.toUpperCase();
+  }
 
   function handleEditorMount(editor) {
     console.log("🚀 Editor mounted for room:", roomId);
@@ -87,6 +122,36 @@ export default function CodeEditor() {
     providerRef.current = provider;
 
     const yText = ydoc.getText("monaco"); // Use consistent text name
+
+    // Presence: set local user state and subscribe to awareness changes
+    const awareness = provider.awareness;
+    try {
+      const displayName = user?.displayName || user?.username || "User";
+      awareness.setLocalStateField("user", {
+        id: user?.id,
+        name: displayName,
+        color: getColorForId(user?.id || displayName),
+      });
+    } catch (e) {
+      console.warn("Unable to set local awareness state", e);
+    }
+
+    const updateOnlineUsers = () => {
+      const states = Array.from(awareness.getStates().values());
+      const users = states
+        .map((s) => s.user)
+        .filter(Boolean)
+        .reduce((acc, u) => {
+          if (!acc.find((x) => x.id === u.id && x.name === u.name)) {
+            acc.push(u);
+          }
+          return acc;
+        }, []);
+      setOnlineUsers(users);
+    };
+
+    awareness.on("change", updateOnlineUsers);
+    updateOnlineUsers();
 
     provider.on("status", (event) => {
       console.log("Yjs status:", event.status);
@@ -165,6 +230,15 @@ export default function CodeEditor() {
       setIsConnected(false);
     });
 
+    // Cleanup listeners on editor dispose/unmount scenario
+    editor.onDidDispose(() => {
+      try {
+        awareness.off("change", updateOnlineUsers);
+      } catch (e) {
+        console.warn("Failed to detach awareness change listener", e);
+      }
+    });
+
     // Debug: Log document state
     console.log("📄 Initial document state:", {
       roomId,
@@ -219,7 +293,7 @@ export default function CodeEditor() {
           </p>
           <button
             onClick={() => navigate("/")}
-            className="bg-blue-600 text-white px-6 py-2 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="text-sm bg-blue-600 text-white px-6 py-2 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
             Back to Home
           </button>
@@ -231,14 +305,36 @@ export default function CodeEditor() {
   return (
     <div>
       {/* Connection Status Bar */}
-      <div className="bg-gray-100 px-4 py-2 border-b border-gray-200 flex items-center justify-between">
-        <div className="flex items-center space-x-2">
+      <div className="relative z-20 bg-gray-100 px-4 py-2 border-b border-gray-200 flex items-center justify-between">
+        <div className="flex items-center space-x-3">
           <div
             className={`w-2 h-2 rounded-full ${
               isConnected ? "bg-green-500" : "bg-red-500"
             }`}
           ></div>
           <span className="text-sm text-gray-600">{connectionStatus}</span>
+          <div className="hidden sm:flex items-center space-x-2 ml-4">
+            <span className="text-xs text-gray-500">Online:</span>
+            <div className="flex items-center -space-x-2">
+              {onlineUsers.map((u) => (
+                <div key={`${u.id}-${u.name}`} className="relative group">
+                  <div
+                    className="relative inline-flex items-center justify-center h-6 w-6 rounded-full ring-2 ring-white text-white text-[10px] font-medium"
+                    title={u.name}
+                    aria-label={u.name}
+                    style={{ backgroundColor: u.color }}
+                  >
+                    {getInitials(u.name)}
+                  </div>
+                  <div className="pointer-events-none absolute z-50 top-2 left-1/2 -translate-x-1/2 translate-y-full whitespace-nowrap rounded px-2 py-1 text-xs text-white bg-gray-900/90 opacity-0 group-hover:opacity-100 transition-opacity shadow-md">
+                    {u.name}
+                    <div className="absolute left-1/2 -top-1 -translate-x-1/2 border-4 border-transparent border-b-gray-900/90"></div>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <span className="text-xs text-gray-500">{onlineUsers.length}</span>
+          </div>
         </div>
         <div className="flex items-center space-x-3">
           <span className="text-xs text-gray-500">Room: {roomId}</span>
