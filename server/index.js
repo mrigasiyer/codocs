@@ -336,24 +336,96 @@ app.post(
 const server = http.createServer(app);
 const io = new Server(server, { cors: { origin: "*" } });
 
+// Store user information for each socket
+const userSockets = new Map(); // socketId -> { userId, username, displayName, currentRoom }
+
 io.on("connection", (socket) => {
   console.log("✅ Socket.io user connected:", socket.id);
 
-  // Handle joining a room for chat
+  // Handle authentication and user info
+  socket.on("authenticate", async (token) => {
+    try {
+      const decoded = jwt.verify(token, JWT_SECRET);
+      const user = await User.findById(decoded.userId).select(
+        "username displayName"
+      );
+
+      if (user) {
+        userSockets.set(socket.id, {
+          userId: user._id,
+          username: user.username,
+          displayName: user.displayName,
+          currentRoom: null,
+        });
+        socket.user = user;
+        console.log(
+          `🔐 User authenticated: ${user.displayName || user.username}`
+        );
+      }
+    } catch (error) {
+      console.log("❌ Authentication failed for socket:", socket.id);
+    }
+  });
+
+  // Handle joining a room for chat and presence
   socket.on("joinRoom", (roomName) => {
+    const userInfo = userSockets.get(socket.id);
+
+    // Leave previous room if any
+    if (userInfo && userInfo.currentRoom) {
+      socket.leave(userInfo.currentRoom);
+      // Notify others in the previous room
+      socket.to(userInfo.currentRoom).emit("userLeft", {
+        username: userInfo.displayName || userInfo.username,
+        message: `${userInfo.displayName || userInfo.username} has left`,
+      });
+    }
+
     socket.join(roomName);
+
+    if (userInfo) {
+      userInfo.currentRoom = roomName;
+      // Notify others in the new room
+      socket.to(roomName).emit("userJoined", {
+        username: userInfo.displayName || userInfo.username,
+        message: `${userInfo.displayName || userInfo.username} has joined`,
+      });
+    }
+
     console.log(`👤 User ${socket.id} joined room: ${roomName}`);
   });
 
   // Handle leaving a room
   socket.on("leaveRoom", (roomName) => {
+    const userInfo = userSockets.get(socket.id);
     socket.leave(roomName);
+
+    if (userInfo && userInfo.currentRoom === roomName) {
+      userInfo.currentRoom = null;
+      // Notify others in the room
+      socket.to(roomName).emit("userLeft", {
+        username: userInfo.displayName || userInfo.username,
+        message: `${userInfo.displayName || userInfo.username} has left`,
+      });
+    }
+
     console.log(`👤 User ${socket.id} left room: ${roomName}`);
   });
 
-  socket.on("disconnect", () =>
-    console.log("❌ Socket.io user disconnected:", socket.id)
-  );
+  socket.on("disconnect", () => {
+    const userInfo = userSockets.get(socket.id);
+
+    // Notify others in the current room
+    if (userInfo && userInfo.currentRoom) {
+      socket.to(userInfo.currentRoom).emit("userLeft", {
+        username: userInfo.displayName || userInfo.username,
+        message: `${userInfo.displayName || userInfo.username} has left`,
+      });
+    }
+
+    userSockets.delete(socket.id);
+    console.log("❌ Socket.io user disconnected:", socket.id);
+  });
 });
 
 // ✅ Use y-websocket's built-in WebSocket server

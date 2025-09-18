@@ -8,6 +8,7 @@ import { AuthProvider, useAuth } from "./contexts/AuthContext";
 import Login from "./components/Login";
 import Home from "./pages/Home";
 import CodeEditor from "./components/CodeEditor";
+import NotificationManager from "./components/NotificationManager";
 
 // Protected route component
 const ProtectedRoute = ({ children }) => {
@@ -62,6 +63,7 @@ function App() {
   return (
     <AuthProvider>
       <AppRoutes />
+      <NotificationManager />
     </AuthProvider>
   );
 }

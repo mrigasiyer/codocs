@@ -30,11 +30,29 @@ export default function Chat({ roomName, isVisible, onToggle }) {
 
       newSocket.on("connect", () => {
         console.log("Connected to chat server");
-        newSocket.emit("joinRoom", roomName);
+        // Authenticate with the server
+        newSocket.emit("authenticate", token);
+        // Join room after authentication
+        setTimeout(() => {
+          newSocket.emit("joinRoom", roomName);
+        }, 100);
       });
 
       newSocket.on("newMessage", (message) => {
         setMessages((prev) => [...prev, message]);
+      });
+
+      // Listen for user join/leave events
+      newSocket.on("userJoined", (data) => {
+        if (window.addNotification) {
+          window.addNotification(data.message, "join", 4000);
+        }
+      });
+
+      newSocket.on("userLeft", (data) => {
+        if (window.addNotification) {
+          window.addNotification(data.message, "leave", 4000);
+        }
       });
 
       newSocket.on("disconnect", () => {
