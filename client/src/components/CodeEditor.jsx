@@ -5,6 +5,7 @@ import { MonacoBinding } from "y-monaco";
 import { useParams, useNavigate } from "react-router-dom";
 import { useEffect, useRef, useState } from "react";
 import { useAuth } from "../contexts/AuthContext";
+import Chat from "./Chat";
 
 export default function CodeEditor() {
   const { roomId } = useParams();
@@ -27,6 +28,7 @@ export default function CodeEditor() {
   const [roomInfo, setRoomInfo] = useState(null);
   const [showSharedModal, setShowSharedModal] = useState(false);
   const [onlineUsers, setOnlineUsers] = useState([]);
+  const [showChat, setShowChat] = useState(false);
 
   // Check room access on mount
   useEffect(() => {
@@ -674,6 +676,12 @@ export default function CodeEditor() {
         </div>
         <div className="flex items-center space-x-3">
           <span className="text-xs text-gray-500">Room: {roomId}</span>
+          <button
+            onClick={() => setShowChat(!showChat)}
+            className="text-sm bg-green-600 text-white px-3 py-1.5 rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500"
+          >
+            {showChat ? "Hide Chat" : "Chat"}
+          </button>
           {hasAccess && (
             <button
               onClick={() => setShowSharedModal(true)}
@@ -697,6 +705,11 @@ export default function CodeEditor() {
         onMount={handleEditorMount}
       />
       <SharedWithModal />
+      <Chat
+        roomName={roomId}
+        isVisible={showChat}
+        onToggle={() => setShowChat(!showChat)}
+      />
     </div>
   );
 

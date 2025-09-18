@@ -174,9 +174,7 @@ export default function Home() {
         {/* Available Rooms */}
         <div className="bg-white rounded-xl shadow-sm ring-1 ring-slate-200">
           <div className="px-6 py-4 border-b border-slate-200">
-            <h3 className="text-lg font-medium text-slate-900">
-              Recent Rooms
-            </h3>
+            <h3 className="text-lg font-medium text-slate-900">Recent Rooms</h3>
           </div>
           <div className="p-6">
             {roomList.length === 0 ? (
@@ -187,9 +185,9 @@ export default function Home() {
             ) : (
               <div className="space-y-3">
                 {roomList.map((room) => {
-                  const isOwner = room.owner._id === user.id;
+                  const isOwner = room.owner && room.owner._id === user.id;
                   const isShared = room.sharedWith.some(
-                    (share) => share.user._id === user.id
+                    (share) => share.user && share.user._id === user.id
                   );
                   const accessType = isOwner
                     ? "Owner"
