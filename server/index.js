@@ -10,6 +10,7 @@ const connectDB = require("./db");
 const YDocModel = require("./models/YDoc");
 const Room = require("./models/Room");
 const User = require("./models/User");
+const Message = require("./models/Chat");
 
 // Import auth routes
 const authRouter = require("./routes/auth");
@@ -219,11 +220,136 @@ app.get("/api/rooms/:roomName/access", authenticateToken, async (req, res) => {
   }
 });
 
+// Chat API endpoints
+
+// Get chat messages for a room
+app.get(
+  "/api/rooms/:roomName/messages",
+  authenticateToken,
+  async (req, res) => {
+    try {
+      const { roomName } = req.params;
+      const userId = req.user._id;
+
+      // Check if user has access to this room
+      const room = await Room.findOne({ name: roomName })
+        .populate("owner", "username displayName")
+        .populate("sharedWith.user", "username displayName");
+
+      if (!room) {
+        return res.status(404).json({ error: "Room not found" });
+      }
+
+      const ownerId = room.owner._id.toString();
+      const hasAccess =
+        ownerId === userId.toString() ||
+        room.sharedWith.some((share) => {
+          const sharedUserId =
+            share.user && share.user._id
+              ? share.user._id.toString()
+              : share.user.toString();
+          return sharedUserId === userId.toString();
+        });
+
+      if (!hasAccess) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+
+      // Get messages for this room, ordered by timestamp
+      const messages = await Message.find({ roomName })
+        .populate("user", "username displayName")
+        .sort({ timestamp: 1 })
+        .limit(100); // Limit to last 100 messages for performance
+
+      res.json(messages);
+    } catch (err) {
+      console.error("Error fetching messages:", err);
+      res.status(500).json({ error: "Failed to fetch messages" });
+    }
+  }
+);
+
+// Send a new message to a room
+app.post(
+  "/api/rooms/:roomName/messages",
+  authenticateToken,
+  async (req, res) => {
+    try {
+      const { roomName } = req.params;
+      const { message } = req.body;
+      const userId = req.user._id;
+
+      if (!message || !message.trim()) {
+        return res.status(400).json({ error: "Message is required" });
+      }
+
+      // Check if user has access to this room
+      const room = await Room.findOne({ name: roomName })
+        .populate("owner", "username displayName")
+        .populate("sharedWith.user", "username displayName");
+
+      if (!room) {
+        return res.status(404).json({ error: "Room not found" });
+      }
+
+      const ownerId = room.owner._id.toString();
+      const hasAccess =
+        ownerId === userId.toString() ||
+        room.sharedWith.some((share) => {
+          const sharedUserId =
+            share.user && share.user._id
+              ? share.user._id.toString()
+              : share.user.toString();
+          return sharedUserId === userId.toString();
+        });
+
+      if (!hasAccess) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+
+      // Create new message
+      const newMessage = new Message({
+        roomName,
+        user: userId,
+        username: req.user.username,
+        displayName: req.user.displayName,
+        message: message.trim(),
+      });
+
+      await newMessage.save();
+
+      // Populate the user data for the response
+      await newMessage.populate("user", "username displayName");
+
+      // Emit the new message to all connected clients in this room
+      io.to(roomName).emit("newMessage", newMessage);
+
+      res.status(201).json(newMessage);
+    } catch (err) {
+      console.error("Error sending message:", err);
+      res.status(500).json({ error: "Failed to send message" });
+    }
+  }
+);
+
 const server = http.createServer(app);
 const io = new Server(server, { cors: { origin: "*" } });
 
 io.on("connection", (socket) => {
   console.log("✅ Socket.io user connected:", socket.id);
+
+  // Handle joining a room for chat
+  socket.on("joinRoom", (roomName) => {
+    socket.join(roomName);
+    console.log(`👤 User ${socket.id} joined room: ${roomName}`);
+  });
+
+  // Handle leaving a room
+  socket.on("leaveRoom", (roomName) => {
+    socket.leave(roomName);
+    console.log(`👤 User ${socket.id} left room: ${roomName}`);
+  });
+
   socket.on("disconnect", () =>
     console.log("❌ Socket.io user disconnected:", socket.id)
   );
@@ -291,17 +417,41 @@ wss.on("connection", setupWSConnection);
 server.on("upgrade", (request, socket, head) => {
   const pathname = request.url;
 
-  if (pathname === "/") {
-    // Handle root path
-    socket.destroy();
+  console.log(`🔗 WebSocket upgrade request for: ${pathname}`);
+
+  // Let Socket.IO handle its own connections (it uses /socket.io/ path)
+  if (pathname.startsWith("/socket.io/")) {
+    console.log(`📡 Socket.IO connection detected`);
+    return; // Let Socket.IO handle this
+  }
+
+  // Handle y-websocket connections for collaborative editing
+  // These come in as just the room name (e.g., /mytestroom, /room123, etc.)
+  // Extract just the path part (before any query parameters)
+  const cleanPath = pathname.split("?")[0];
+
+  // Accept any path that starts with / and doesn't start with /socket.io/
+  // This covers room names like /mytestroom, /room123, etc.
+  const isRoomPath =
+    cleanPath.startsWith("/") && !cleanPath.startsWith("/socket.io/");
+
+  console.log(
+    `🔍 Debug - pathname: "${pathname}", cleanPath: "${cleanPath}", isRoomPath: ${isRoomPath}`
+  );
+
+  if (isRoomPath) {
+    console.log(
+      `📝 Y-WebSocket connection for collaborative editing: ${cleanPath}`
+    );
+    wss.handleUpgrade(request, socket, head, (ws) => {
+      wss.emit("connection", ws, request);
+    });
     return;
   }
 
-  console.log(`🔗 WebSocket upgrade request for: ${pathname}`);
-
-  wss.handleUpgrade(request, socket, head, (ws) => {
-    wss.emit("connection", ws, request);
-  });
+  // Unknown path, destroy connection
+  console.log(`❌ Unknown WebSocket path: ${pathname}`);
+  socket.destroy();
 });
 
 const PORT = 3001;
