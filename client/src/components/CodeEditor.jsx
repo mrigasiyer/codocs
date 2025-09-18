@@ -746,19 +746,22 @@ export default function CodeEditor() {
                 </div>
               ) : (
                 <div className="space-y-2">
-                  {shared.map((s) => (
-                    <div
-                      key={s.user._id}
-                      className="flex items-center justify-between bg-gray-50 px-3 py-2 rounded"
-                    >
-                      <span className="text-gray-900 text-sm">
-                        {s.user.displayName || s.user.username}
-                      </span>
-                      <span className="text-xs text-gray-600">
-                        {new Date(s.sharedAt).toLocaleDateString()}
-                      </span>
-                    </div>
-                  ))}
+                  {shared.map(
+                    (s) =>
+                      s.user && (
+                        <div
+                          key={s.user._id}
+                          className="flex items-center justify-between bg-gray-50 px-3 py-2 rounded"
+                        >
+                          <span className="text-gray-900 text-sm">
+                            {s.user.displayName || s.user.username}
+                          </span>
+                          <span className="text-xs text-gray-600">
+                            {new Date(s.sharedAt).toLocaleDateString()}
+                          </span>
+                        </div>
+                      )
+                  )}
                 </div>
               )}
             </div>

@@ -127,7 +127,8 @@ app.post("/api/rooms/:roomName/share", authenticateToken, async (req, res) => {
 
     // Check if already shared
     const alreadyShared = room.sharedWith.some(
-      (share) => share.user.toString() === userToShare._id.toString()
+      (share) =>
+        share.user && share.user.toString() === userToShare._id.toString()
     );
 
     if (alreadyShared) {
@@ -206,10 +207,10 @@ app.get("/api/rooms/:roomName/access", authenticateToken, async (req, res) => {
     const hasAccess =
       ownerId === userId ||
       room.sharedWith.some((share) => {
-        const sharedUserId =
-          share.user && share.user._id
-            ? share.user._id.toString()
-            : share.user.toString();
+        if (!share.user) return false; // Skip if user is null
+        const sharedUserId = share.user._id
+          ? share.user._id.toString()
+          : share.user.toString();
         return sharedUserId === userId;
       });
 
@@ -244,10 +245,10 @@ app.get(
       const hasAccess =
         ownerId === userId.toString() ||
         room.sharedWith.some((share) => {
-          const sharedUserId =
-            share.user && share.user._id
-              ? share.user._id.toString()
-              : share.user.toString();
+          if (!share.user) return false; // Skip if user is null
+          const sharedUserId = share.user._id
+            ? share.user._id.toString()
+            : share.user.toString();
           return sharedUserId === userId.toString();
         });
 
@@ -296,10 +297,10 @@ app.post(
       const hasAccess =
         ownerId === userId.toString() ||
         room.sharedWith.some((share) => {
-          const sharedUserId =
-            share.user && share.user._id
-              ? share.user._id.toString()
-              : share.user.toString();
+          if (!share.user) return false; // Skip if user is null
+          const sharedUserId = share.user._id
+            ? share.user._id.toString()
+            : share.user.toString();
           return sharedUserId === userId.toString();
         });
 
