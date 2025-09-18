@@ -23,7 +23,7 @@ Codocs is a **real-time collaborative code editor** built with **React, Yjs, Web
 - **Database:** MongoDB + Mongoose
 
 ---
-
+<!--
 ## 🔧 Setup & Running Locally
 
 ### 1. Clone Repo
@@ -80,3 +80,4 @@ npm run dev
 ```arduino
 http://localhost:5173/
 ```
+-->

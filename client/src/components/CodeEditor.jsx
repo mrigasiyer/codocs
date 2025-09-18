@@ -13,6 +13,11 @@ export default function CodeEditor() {
   const providerRef = useRef(null);
   const ydocRef = useRef(null);
   const initializedRef = useRef(false);
+  const editorRef = useRef(null);
+  const decorationsRef = useRef({}); // userId -> decorationIds
+  const contentWidgetsRef = useRef({}); // userId -> widget record
+  const typingTimeoutRef = useRef(null);
+  const styleElRef = useRef(null);
   const [connectionStatus, setConnectionStatus] =
     useState("Checking access...");
   const [isConnected, setIsConnected] = useState(false);
@@ -73,6 +78,42 @@ export default function CodeEditor() {
         }
         providerRef.current.disconnect();
       }
+      // Remove any cursor decorations
+      try {
+        const editor = editorRef.current;
+        const decorationsByUser = decorationsRef.current; // copy ref value
+        if (editor && decorationsByUser) {
+          Object.values(decorationsByUser).forEach((ids) => {
+            editor.deltaDecorations(ids, []);
+          });
+        }
+      } catch (e) {
+        console.warn("Failed clearing decorations on unmount", e);
+      }
+      // Remove content widgets
+      try {
+        const editor = editorRef.current;
+        const widgetsByUser = contentWidgetsRef.current; // copy ref value
+        if (editor && widgetsByUser) {
+          Object.values(widgetsByUser).forEach((rec) => {
+            try {
+              editor.removeContentWidget(rec.widget);
+            } catch (err) {
+              console.warn("Failed to remove content widget", err);
+            }
+          });
+        }
+      } catch (e) {
+        console.warn("Failed removing content widgets on unmount", e);
+      }
+      // Remove injected style
+      if (styleElRef.current && styleElRef.current.parentNode) {
+        styleElRef.current.parentNode.removeChild(styleElRef.current);
+        styleElRef.current = null;
+      }
+      if (typingTimeoutRef.current) {
+        clearTimeout(typingTimeoutRef.current);
+      }
     };
   }, []);
 
@@ -96,6 +137,20 @@ export default function CodeEditor() {
     return colors[idx];
   }
 
+  function hexToRgba(hex, alpha) {
+    let c = hex.replace("#", "");
+    if (c.length === 3) {
+      c = c
+        .split("")
+        .map((x) => x + x)
+        .join("");
+    }
+    const r = parseInt(c.substring(0, 2), 16);
+    const g = parseInt(c.substring(2, 4), 16);
+    const b = parseInt(c.substring(4, 6), 16);
+    return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+  }
+
   function getInitials(name) {
     const n = (name || "").trim();
     if (!n) return "?";
@@ -105,7 +160,53 @@ export default function CodeEditor() {
     return (first + last).toUpperCase() || first.toUpperCase();
   }
 
+  function ensureBaseCursorStylesInjected() {
+    if (styleElRef.current) return;
+    const styleEl = document.createElement("style");
+    styleEl.type = "text/css";
+    styleEl.innerHTML = `
+      .yselection { position: relative; }
+      /* Solid caret line */
+      .ycursor-caret { display: inline-block; width: 2px; height: 1.2em; background: currentColor; vertical-align: text-top; }
+
+      /* Google Docs-like bubble above caret (compact by default) */
+      .ycursor-bubble { position: absolute; transform: translate(-50%, -2px); top: 0; height: 14px; border-radius: 6px; color: #fff; font-size: 10px; line-height: 14px; white-space: nowrap; box-shadow: 0 2px 6px rgba(0,0,0,0.18); pointer-events: auto; display: inline-flex; align-items: center; border: 1px solid var(--yc, #555); background: transparent; }
+      .ycursor-bubble .cap { display: block; width: 8px; height: 100%; border-radius: 6px; background: var(--yc, #555); }
+      .ycursor-bubble .label { display: none; padding: 0 6px; font-weight: 700; letter-spacing: 0.1px; }
+      .ycursor-bubble[data-active="1"] { background: var(--yc, #555); }
+      .ycursor-bubble[data-active="1"] .cap { display: none; }
+      .ycursor-bubble[data-active="1"] .label { display: inline; }
+      .ycursor-bubble:hover { background: var(--yc, #555); }
+      .ycursor-bubble:hover .cap { display: none; }
+      .ycursor-bubble:hover .label { display: inline; }
+    `;
+    document.head.appendChild(styleEl);
+    styleElRef.current = styleEl;
+  }
+
+  function upsertUserCursorStyles(userId, color) {
+    ensureBaseCursorStylesInjected();
+    const id = String(userId || "anonymous");
+    const existing = document.getElementById(`ycursor-style-${id}`);
+    const rgba = hexToRgba(color, 0.18);
+    const css = `
+      .ycursor-caret-${id} { color: ${color}; }
+      .yselection-${id} { background: ${rgba}; }
+      .ycursor-label-${id} { --yc: ${color}; }
+    `;
+    if (existing) {
+      existing.textContent = css;
+      return;
+    }
+    const styleEl = document.createElement("style");
+    styleEl.type = "text/css";
+    styleEl.id = `ycursor-style-${id}`;
+    styleEl.textContent = css;
+    document.head.appendChild(styleEl);
+  }
+
   function handleEditorMount(editor) {
+    editorRef.current = editor;
     console.log("🚀 Editor mounted for room:", roomId);
     console.log("🔄 Initialization ref state:", initializedRef.current);
 
@@ -150,7 +251,238 @@ export default function CodeEditor() {
       setOnlineUsers(users);
     };
 
-    awareness.on("change", updateOnlineUsers);
+    function publishLocalSelection(partial = {}) {
+      try {
+        const model = editor.getModel();
+        const sel = editor.getSelection();
+        const existing = awareness.getLocalState() || {};
+        const payload = { ...existing, ...partial };
+        if (model && sel) {
+          const anchorOffset = model.getOffsetAt({
+            lineNumber: sel.selectionStartLineNumber,
+            column: sel.selectionStartColumn,
+          });
+          const headOffset = model.getOffsetAt({
+            lineNumber: sel.positionLineNumber,
+            column: sel.positionColumn,
+          });
+          payload.selection = {
+            anchor: anchorOffset,
+            head: headOffset,
+          };
+        }
+        awareness.setLocalState(payload);
+      } catch (e) {
+        console.warn("Failed to publish local selection", e);
+      }
+    }
+
+    function setTypingActive() {
+      publishLocalSelection({ typing: true });
+      if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+      typingTimeoutRef.current = setTimeout(() => {
+        publishLocalSelection({ typing: false });
+      }, 900);
+    }
+
+    function ensureTypingLabel(userObj, position, isActive) {
+      const editor = editorRef.current;
+      if (!editor) return;
+      const id = userObj.id;
+      const key = String(id);
+      const color = userObj.color || getColorForId(userObj.id || userObj.name);
+      upsertUserCursorStyles(userObj.id, color);
+
+      let rec = contentWidgetsRef.current[key];
+      if (!rec) {
+        const dom = document.createElement("div");
+        dom.className = `ycursor-bubble ycursor-label-${key}`;
+        dom.setAttribute("data-active", isActive ? "1" : "0");
+
+        const cap = document.createElement("span");
+        cap.className = "cap";
+
+        const label = document.createElement("span");
+        label.className = "label";
+        label.textContent = userObj.name;
+
+        dom.appendChild(cap);
+        dom.appendChild(label);
+
+        const widgetRecord = { position, dom, manualActive: false };
+        const widget = {
+          getId: () => `ycursor-label-${key}`,
+          getDomNode: () => dom,
+          getPosition: () => ({
+            position: widgetRecord.position,
+            preference: [
+              window.monaco?.editor?.ContentWidgetPositionPreference?.ABOVE,
+              0,
+            ].filter(Boolean),
+          }),
+        };
+        widgetRecord.widget = widget;
+        try {
+          editor.addContentWidget(widget);
+        } catch (e) {
+          console.warn("Failed to add content widget", e);
+        }
+        // Toggle expand on click
+        dom.addEventListener("click", (ev) => {
+          ev.stopPropagation();
+          widgetRecord.manualActive = !widgetRecord.manualActive;
+          dom.setAttribute(
+            "data-active",
+            widgetRecord.manualActive ? "1" : "0"
+          );
+          try {
+            editor.layoutContentWidget(widget);
+          } catch (e) {
+            console.warn("Failed to layout content widget after click", e);
+          }
+        });
+        contentWidgetsRef.current[key] = widgetRecord;
+        rec = widgetRecord;
+      }
+
+      // update position and active state (typing OR manual toggle)
+      rec.position = position;
+      const effectiveActive = isActive || rec.manualActive;
+      rec.dom.setAttribute("data-active", effectiveActive ? "1" : "0");
+      try {
+        editor.layoutContentWidget(rec.widget);
+      } catch (e) {
+        console.warn("Failed to layout content widget", e);
+      }
+    }
+
+    function removeTypingLabel(userObj) {
+      const editor = editorRef.current;
+      if (!editor) return;
+      const key = String(userObj.id);
+      const rec = contentWidgetsRef.current[key];
+      if (rec) {
+        try {
+          editor.removeContentWidget(rec.widget);
+        } catch (e) {
+          console.warn("Failed to remove content widget", e);
+        }
+        delete contentWidgetsRef.current[key];
+      }
+    }
+
+    function renderRemoteCursors() {
+      const editor = editorRef.current;
+      const model = editor?.getModel();
+      if (!editor || !model) return;
+      const clientId = awareness.clientID;
+      const states = awareness.getStates();
+
+      states.forEach((state, key) => {
+        if (key === clientId) return; // skip local
+        const u = state?.user;
+        const sel = state?.selection;
+        if (
+          !u ||
+          !sel ||
+          typeof sel.anchor !== "number" ||
+          typeof sel.head !== "number"
+        ) {
+          // Clear decorations for this user if present
+          const prev = decorationsRef.current[u?.id];
+          if (prev) {
+            try {
+              editor.deltaDecorations(prev, []);
+            } catch (e) {
+              console.warn("Failed to clear user decorations", e);
+            }
+            delete decorationsRef.current[u.id];
+          }
+          removeTypingLabel({ id: u?.id });
+          return;
+        }
+
+        const color = u.color || getColorForId(u.id || u.name);
+        upsertUserCursorStyles(u.id, color);
+
+        const anchorPos = model.getPositionAt(sel.anchor);
+        const headPos = model.getPositionAt(sel.head);
+
+        const startPos = sel.anchor <= sel.head ? anchorPos : headPos;
+        const endPos = sel.anchor <= sel.head ? headPos : anchorPos;
+
+        const newDecorations = [];
+
+        // Selection highlight (only if not collapsed)
+        if (sel.anchor !== sel.head) {
+          newDecorations.push({
+            range: {
+              startLineNumber: startPos.lineNumber,
+              startColumn: startPos.column,
+              endLineNumber: endPos.lineNumber,
+              endColumn: endPos.column,
+            },
+            options: {
+              className: `yselection yselection-${u.id}`,
+              isWholeLine: false,
+            },
+          });
+        }
+
+        // Caret at head position (always visible)
+        const caretPos = headPos;
+        newDecorations.push({
+          range: {
+            startLineNumber: caretPos.lineNumber,
+            startColumn: caretPos.column,
+            endLineNumber: caretPos.lineNumber,
+            endColumn: caretPos.column,
+          },
+          options: {
+            afterContentClassName: `ycursor-caret ycursor-caret-${u.id}`,
+            hoverMessage: [{ value: `${u.name}` }],
+            stickiness: 1,
+          },
+        });
+
+        const prev = decorationsRef.current[u.id] || [];
+        let applied = [];
+        try {
+          applied = editor.deltaDecorations(prev, newDecorations);
+        } catch (e) {
+          console.warn("Failed to apply decorations", e);
+        }
+        decorationsRef.current[u.id] = applied;
+
+        // Typing label: always render a bubble; expand when typing or on hover
+        const isActive = !!state?.typing;
+        ensureTypingLabel(u, headPos, isActive);
+      });
+    }
+
+    awareness.on("change", () => {
+      updateOnlineUsers();
+      renderRemoteCursors();
+    });
+
+    editor.onDidChangeCursorSelection(() => {
+      publishLocalSelection();
+    });
+    editor.onDidChangeCursorPosition(() => {
+      publishLocalSelection();
+    });
+    editor.onDidFocusEditorText(() => {
+      publishLocalSelection();
+    });
+    editor.onDidType(() => {
+      setTypingActive();
+    });
+    editor.onKeyDown(() => {
+      setTypingActive();
+    });
+
+    // Initial publish and render
+    publishLocalSelection();
     updateOnlineUsers();
 
     provider.on("status", (event) => {
@@ -192,8 +524,8 @@ export default function CodeEditor() {
               currentContent.substring(0, 100)
             );
 
-            // Document is ready - no need to add default text
-            console.log("📝 Document ready, no default text needed");
+            // Document is ready - render cursors
+            renderRemoteCursors();
             setConnectionStatus("Connected");
           }, 100); // Small delay to ensure full sync
 
@@ -211,9 +543,13 @@ export default function CodeEditor() {
 
     // Listen for text changes
     yText.observe((event) => {
+      // re-render remote cursors to keep positions correct
+      try {
+        renderRemoteCursors();
+      } catch (e) {
+        console.warn("Failed to re-render remote cursors after text change", e);
+      }
       console.log("📝 Text changed:", event.changes);
-      console.log("📝 Current text length:", yText.length);
-      console.log("📝 Text preview:", yText.toString().substring(0, 100));
     });
 
     // Handle connection errors
