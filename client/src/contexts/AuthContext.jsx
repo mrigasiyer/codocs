@@ -1,14 +1,6 @@
-import React, { createContext, useContext, useState, useEffect } from "react";
+import React, { createContext, useState, useEffect } from "react";
 
-const AuthContext = createContext();
-
-export const useAuth = () => {
-  const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error("useAuth must be used within an AuthProvider");
-  }
-  return context;
-};
+export const AuthContext = createContext();
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
@@ -51,6 +43,43 @@ export const AuthProvider = ({ children }) => {
     verifyToken();
   }, [token]);
 
+  // Handle Google OAuth callback globally
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const token = urlParams.get("token");
+    const userParam = urlParams.get("user");
+    const error = urlParams.get("error");
+
+    console.log("OAuth callback detected:", {
+      token: !!token,
+      user: !!userParam,
+      error,
+      currentPath: window.location.pathname,
+      fullURL: window.location.href,
+    });
+
+    if (error) {
+      console.error("OAuth error:", error);
+      // Clean up URL
+      window.history.replaceState({}, document.title, window.location.pathname);
+    } else if (token && userParam) {
+      try {
+        console.log("Processing OAuth success callback");
+        const user = JSON.parse(decodeURIComponent(userParam));
+        console.log("User data:", user);
+        handleGoogleAuth(token, user);
+        // Clean up URL
+        window.history.replaceState(
+          {},
+          document.title,
+          window.location.pathname
+        );
+      } catch (parseError) {
+        console.error("Error parsing user data:", parseError);
+      }
+    }
+  }, []);
+
   const login = async (email, password) => {
     try {
       const response = await fetch("http://localhost:3001/api/auth/login", {
@@ -69,10 +98,11 @@ export const AuthProvider = ({ children }) => {
         localStorage.setItem("codocs-user", JSON.stringify(data.user));
         return { success: true };
       } else {
-        const error = await response.json();
-        return { success: false, error: error.error };
+        const errorData = await response.json();
+        return { success: false, error: errorData.error };
       }
-    } catch (error) {
+    } catch (networkError) {
+      console.error("Login network error:", networkError);
       return { success: false, error: "Network error" };
     }
   };
@@ -95,12 +125,20 @@ export const AuthProvider = ({ children }) => {
         localStorage.setItem("codocs-user", JSON.stringify(data.user));
         return { success: true };
       } else {
-        const error = await response.json();
-        return { success: false, error: error.error };
+        const errorData = await response.json();
+        return { success: false, error: errorData.error };
       }
-    } catch (error) {
+    } catch (networkError) {
+      console.error("Login network error:", networkError);
       return { success: false, error: "Network error" };
     }
+  };
+
+  const handleGoogleAuth = (token, userData) => {
+    setToken(token);
+    setUser(userData);
+    localStorage.setItem("codocs-token", token);
+    localStorage.setItem("codocs-user", JSON.stringify(userData));
   };
 
   const logout = () => {
@@ -116,6 +154,7 @@ export const AuthProvider = ({ children }) => {
     loading,
     login,
     register,
+    handleGoogleAuth,
     logout,
     isAuthenticated: !!user,
   };

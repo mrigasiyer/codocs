@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { useAuth } from "../contexts/AuthContext";
+import { useAuth } from "../hooks/useAuth";
 import { io } from "socket.io-client";
 
 export default function Chat({ roomName, isVisible, onToggle }) {

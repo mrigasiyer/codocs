@@ -1,6 +1,8 @@
 const express = require("express");
 const http = require("http");
 const cors = require("cors");
+const session = require("express-session");
+const passport = require("passport");
 const { Server } = require("socket.io");
 const WebSocket = require("ws");
 const { setupWSConnection } = require("y-websocket/bin/utils");
@@ -46,6 +48,23 @@ app.use(express.json());
 
 // ✅ Connect to MongoDB
 connectDB();
+
+// Configure session middleware
+app.use(
+  session({
+    secret: process.env.SESSION_SECRET || "your-session-secret",
+    resave: false,
+    saveUninitialized: false,
+    cookie: {
+      secure: process.env.NODE_ENV === "production",
+      maxAge: 24 * 60 * 60 * 1000, // 24 hours
+    },
+  })
+);
+
+// Initialize Passport
+app.use(passport.initialize());
+app.use(passport.session());
 
 // Add auth routes
 app.use("/api/auth", authRouter);

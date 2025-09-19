@@ -20,13 +20,34 @@ const userSchema = new mongoose.Schema(
     },
     password: {
       type: String,
-      required: true,
-      minlength: 6,
+      required: function () {
+        return !this.googleId; // Only required if not using Google OAuth
+      },
     },
     displayName: {
       type: String,
       required: true,
       trim: true,
+    },
+    // Google OAuth fields
+    googleId: {
+      type: String,
+      unique: true,
+      sparse: true, // Allows multiple null values
+    },
+    googleEmail: {
+      type: String,
+      lowercase: true,
+      trim: true,
+    },
+    profilePicture: {
+      type: String,
+      trim: true,
+    },
+    authMethod: {
+      type: String,
+      enum: ["local", "google"],
+      default: "local",
     },
   },
   {
@@ -34,9 +55,15 @@ const userSchema = new mongoose.Schema(
   }
 );
 
-// Hash password before saving
+// Hash password before saving (only for local auth users)
 userSchema.pre("save", async function (next) {
-  if (!this.isModified("password")) return next();
+  if (!this.isModified("password") || this.authMethod !== "local")
+    return next();
+
+  // Validate password length before hashing
+  if (this.password && this.password.length < 6) {
+    return next(new Error("Password must be at least 6 characters long"));
+  }
 
   try {
     const salt = await bcrypt.genSalt(10);
