@@ -5,12 +5,14 @@ import { MonacoBinding } from "y-monaco";
 import { useParams, useNavigate } from "react-router-dom";
 import { useEffect, useRef, useState } from "react";
 import { useAuth } from "../hooks/useAuth";
+import { useTheme } from "../hooks/useTheme";
 import Chat from "./Chat";
 
 export default function CodeEditor() {
   const { roomId } = useParams();
   const navigate = useNavigate();
   const { token, user } = useAuth();
+  const { theme } = useTheme();
   const providerRef = useRef(null);
   const ydocRef = useRef(null);
   const initializedRef = useRef(false);
@@ -587,10 +589,10 @@ export default function CodeEditor() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <h2 className="text-xl font-semibold text-gray-700">
+          <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-blue-600 dark:border-blue-400 mx-auto mb-4"></div>
+          <h2 className="text-xl font-semibold text-gray-700 dark:text-gray-300">
             Checking access...
           </h2>
         </div>
@@ -600,13 +602,13 @@ export default function CodeEditor() {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
         <div className="text-center">
           <div className="text-red-500 text-6xl mb-4">🚫</div>
-          <h2 className="text-xl font-semibold text-gray-700 mb-2">
+          <h2 className="text-xl font-semibold text-gray-700 dark:text-gray-300 mb-2">
             Access Denied
           </h2>
-          <p className="text-gray-600 mb-4">{error}</p>
+          <p className="text-gray-600 dark:text-gray-400 mb-4">{error}</p>
           <button
             onClick={() => navigate("/")}
             className="bg-blue-600 text-white px-6 py-2 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -620,13 +622,13 @@ export default function CodeEditor() {
 
   if (!hasAccess) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
         <div className="text-center">
           <div className="text-red-500 text-6xl mb-4">🔒</div>
-          <h2 className="text-xl font-semibold text-gray-700 mb-2">
+          <h2 className="text-xl font-semibold text-gray-700 dark:text-gray-300 mb-2">
             No Access
           </h2>
-          <p className="text-gray-600 mb-4">
+          <p className="text-gray-600 dark:text-gray-400 mb-4">
             You don't have permission to access this room.
           </p>
           <button
@@ -643,39 +645,47 @@ export default function CodeEditor() {
   return (
     <div>
       {/* Connection Status Bar */}
-      <div className="relative z-20 bg-gray-100 px-4 py-2 border-b border-gray-200 flex items-center justify-between">
+      <div className="relative z-20 bg-gray-100 dark:bg-gray-800 px-4 py-2 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
         <div className="flex items-center space-x-3">
           <div
             className={`w-2 h-2 rounded-full ${
               isConnected ? "bg-green-500" : "bg-red-500"
             }`}
           ></div>
-          <span className="text-sm text-gray-600">{connectionStatus}</span>
+          <span className="text-sm text-gray-600 dark:text-gray-300">
+            {connectionStatus}
+          </span>
           <div className="hidden sm:flex items-center space-x-2 ml-4">
-            <span className="text-xs text-gray-500">Online:</span>
+            <span className="text-xs text-gray-500 dark:text-gray-400">
+              Online:
+            </span>
             <div className="flex items-center -space-x-2">
               {onlineUsers.map((u) => (
                 <div key={`${u.id}-${u.name}`} className="relative group">
                   <div
-                    className="relative inline-flex items-center justify-center h-6 w-6 rounded-full ring-2 ring-white text-white text-[10px] font-medium"
+                    className="relative inline-flex items-center justify-center h-6 w-6 rounded-full ring-2 ring-white dark:ring-gray-800 text-white text-[10px] font-medium"
                     title={u.name}
                     aria-label={u.name}
                     style={{ backgroundColor: u.color }}
                   >
                     {getInitials(u.name)}
                   </div>
-                  <div className="pointer-events-none absolute z-50 top-2 left-1/2 -translate-x-1/2 translate-y-full whitespace-nowrap rounded px-2 py-1 text-xs text-white bg-gray-900/90 opacity-0 group-hover:opacity-100 transition-opacity shadow-md">
+                  <div className="pointer-events-none absolute z-50 top-2 left-1/2 -translate-x-1/2 translate-y-full whitespace-nowrap rounded px-2 py-1 text-xs text-white bg-gray-900/90 dark:bg-gray-100/90 dark:text-gray-900 opacity-0 group-hover:opacity-100 transition-opacity shadow-md">
                     {u.name}
-                    <div className="absolute left-1/2 -top-1 -translate-x-1/2 border-4 border-transparent border-b-gray-900/90"></div>
+                    <div className="absolute left-1/2 -top-1 -translate-x-1/2 border-4 border-transparent border-b-gray-900/90 dark:border-b-gray-100/90"></div>
                   </div>
                 </div>
               ))}
             </div>
-            <span className="text-xs text-gray-500">{onlineUsers.length}</span>
+            <span className="text-xs text-gray-500 dark:text-gray-400">
+              {onlineUsers.length}
+            </span>
           </div>
         </div>
         <div className="flex items-center space-x-3">
-          <span className="text-xs text-gray-500">Room: {roomId}</span>
+          <span className="text-xs text-gray-500 dark:text-gray-400">
+            Room: {roomId}
+          </span>
           <button
             onClick={() => setShowChat(!showChat)}
             className="text-sm bg-green-600 text-white px-3 py-1.5 rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500"
@@ -685,7 +695,7 @@ export default function CodeEditor() {
           {hasAccess && (
             <button
               onClick={() => setShowSharedModal(true)}
-              className="text-sm bg-gray-200 text-gray-800 px-3 py-1.5 rounded-md hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-400"
+              className="text-sm bg-gray-200 dark:bg-gray-600 text-gray-800 dark:text-gray-200 px-3 py-1.5 rounded-md hover:bg-gray-300 dark:hover:bg-gray-500 focus:outline-none focus:ring-2 focus:ring-gray-400"
             >
               Shared with
             </button>
@@ -702,6 +712,7 @@ export default function CodeEditor() {
       <Editor
         height="calc(90vh - 48px)"
         defaultLanguage="javascript"
+        theme={theme === "dark" ? "vs-dark" : "light"}
         onMount={handleEditorMount}
       />
       <SharedWithModal />
@@ -722,26 +733,30 @@ export default function CodeEditor() {
 
     return (
       <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-        <div className="bg-white rounded-lg p-6 w-96 max-w-md mx-4">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">
+        <div className="bg-white dark:bg-gray-800 rounded-lg p-6 w-96 max-w-md mx-4">
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
             Shared access
           </h3>
           <div className="space-y-4">
             <div>
-              <div className="text-sm text-gray-500 mb-1">Owner</div>
-              <div className="flex items-center justify-between bg-gray-50 px-3 py-2 rounded">
-                <span className="text-gray-900 text-sm">
+              <div className="text-sm text-gray-500 dark:text-gray-400 mb-1">
+                Owner
+              </div>
+              <div className="flex items-center justify-between bg-gray-50 dark:bg-gray-700 px-3 py-2 rounded">
+                <span className="text-gray-900 dark:text-white text-sm">
                   {owner?.displayName || owner?.username}
                 </span>
-                <span className="text-xs text-blue-700 bg-blue-100 px-2 py-0.5 rounded-full">
+                <span className="text-xs text-blue-700 dark:text-blue-300 bg-blue-100 dark:bg-blue-900 px-2 py-0.5 rounded-full">
                   Owner
                 </span>
               </div>
             </div>
             <div>
-              <div className="text-sm text-gray-500 mb-1">Shared with</div>
+              <div className="text-sm text-gray-500 dark:text-gray-400 mb-1">
+                Shared with
+              </div>
               {shared.length === 0 ? (
-                <div className="text-sm text-gray-500 bg-gray-50 px-3 py-2 rounded">
+                <div className="text-sm text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-700 px-3 py-2 rounded">
                   Not shared with anyone
                 </div>
               ) : (
@@ -751,12 +766,12 @@ export default function CodeEditor() {
                       s.user && (
                         <div
                           key={s.user._id}
-                          className="flex items-center justify-between bg-gray-50 px-3 py-2 rounded"
+                          className="flex items-center justify-between bg-gray-50 dark:bg-gray-700 px-3 py-2 rounded"
                         >
-                          <span className="text-gray-900 text-sm">
+                          <span className="text-gray-900 dark:text-white text-sm">
                             {s.user.displayName || s.user.username}
                           </span>
-                          <span className="text-xs text-gray-600">
+                          <span className="text-xs text-gray-600 dark:text-gray-400">
                             {new Date(s.sharedAt).toLocaleDateString()}
                           </span>
                         </div>
@@ -768,7 +783,7 @@ export default function CodeEditor() {
             <div className="flex justify-end space-x-2">
               <button
                 onClick={() => setShowSharedModal(false)}
-                className="bg-gray-200 text-gray-800 px-4 py-2 rounded-md hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-500"
+                className="bg-gray-200 dark:bg-gray-600 text-gray-800 dark:text-gray-200 px-4 py-2 rounded-md hover:bg-gray-300 dark:hover:bg-gray-500 focus:outline-none focus:ring-2 focus:ring-gray-500"
               >
                 Close
               </button>

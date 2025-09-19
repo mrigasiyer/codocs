@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useAuth } from "../hooks/useAuth";
+import { useTheme } from "../hooks/useTheme";
 import { io } from "socket.io-client";
 
 export default function Chat({ roomName, isVisible, onToggle }) {
@@ -9,6 +10,7 @@ export default function Chat({ roomName, isVisible, onToggle }) {
   const [socket, setSocket] = useState(null);
   const messagesEndRef = useRef(null);
   const { token, user } = useAuth();
+  const { theme } = useTheme();
 
   // Auto-scroll to bottom when new messages arrive
   const scrollToBottom = () => {
@@ -174,7 +176,7 @@ export default function Chat({ roomName, isVisible, onToggle }) {
   }
 
   return (
-    <div className="fixed bottom-4 right-4 w-80 h-96 bg-white rounded-lg shadow-xl border border-gray-200 flex flex-col z-50">
+    <div className="fixed bottom-4 right-4 w-80 h-96 bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700 flex flex-col z-50">
       {/* Chat Header */}
       <div className="bg-blue-600 text-white p-3 rounded-t-lg flex justify-between items-center">
         <h3 className="font-semibold">Chat - {roomName}</h3>
@@ -205,7 +207,7 @@ export default function Chat({ roomName, isVisible, onToggle }) {
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
           </div>
         ) : messages.length === 0 ? (
-          <div className="text-center text-gray-500 py-8">
+          <div className="text-center text-gray-500 dark:text-gray-400 py-8">
             <div className="text-4xl mb-2">💬</div>
             <p>No messages yet. Start the conversation!</p>
           </div>
@@ -220,7 +222,7 @@ export default function Chat({ roomName, isVisible, onToggle }) {
             return (
               <div key={message._id}>
                 {showDate && (
-                  <div className="text-center text-xs text-gray-400 py-2">
+                  <div className="text-center text-xs text-gray-400 dark:text-gray-500 py-2">
                     {formatDate(message.timestamp)}
                   </div>
                 )}
@@ -233,18 +235,20 @@ export default function Chat({ roomName, isVisible, onToggle }) {
                     className={`max-w-xs px-3 py-2 rounded-lg ${
                       isCurrentUser
                         ? "bg-blue-600 text-white"
-                        : "bg-gray-100 text-gray-900"
+                        : "bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white"
                     }`}
                   >
                     {!isCurrentUser && (
-                      <div className="text-xs font-medium text-gray-600 mb-1">
+                      <div className="text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">
                         {message.user.displayName || message.user.username}
                       </div>
                     )}
                     <div className="text-sm">{message.message}</div>
                     <div
                       className={`text-xs mt-1 ${
-                        isCurrentUser ? "text-blue-100" : "text-gray-500"
+                        isCurrentUser
+                          ? "text-blue-100"
+                          : "text-gray-500 dark:text-gray-400"
                       }`}
                     >
                       {formatTime(message.timestamp)}
@@ -259,14 +263,14 @@ export default function Chat({ roomName, isVisible, onToggle }) {
       </div>
 
       {/* Message Input */}
-      <div className="p-3 border-t border-gray-200">
+      <div className="p-3 border-t border-gray-200 dark:border-gray-700">
         <form onSubmit={handleSendMessage} className="flex space-x-2">
           <input
             type="text"
             value={newMessage}
             onChange={(e) => setNewMessage(e.target.value)}
             placeholder="Type a message..."
-            className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+            className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white text-sm"
             disabled={!socket}
           />
           <button
