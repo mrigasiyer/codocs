@@ -34,8 +34,12 @@ export default function CodeEditor() {
   const [sharing, setSharing] = useState(false);
   const shareEmailRef = useRef(null);
   const [onlineUsers, setOnlineUsers] = useState([]);
-  const [showChat, setShowChat] = useState(true);
+  const [showChat, setShowChat] = useState(false);
   const statusHideTimeoutRef = useRef(null);
+  const [showFileMenu, setShowFileMenu] = useState(false);
+  const [showRenameModal, setShowRenameModal] = useState(false);
+  const [newRoomName, setNewRoomName] = useState("");
+  const [actionLoading, setActionLoading] = useState(false);
 
   // Check room access on mount
   useEffect(() => {
@@ -161,6 +165,51 @@ export default function CodeEditor() {
       setShowStatusText(true);
     }
   }, [isConnected, connectionStatus]);
+
+  const isOwner = !!(
+    roomInfo &&
+    roomInfo.owner &&
+    roomInfo.owner._id === user?.id
+  );
+
+  const handleOpenRename = () => {
+    if (!isOwner || !roomInfo?.name) return;
+    setNewRoomName(roomInfo.name);
+    setShowRenameModal(true);
+    setShowFileMenu(false);
+  };
+
+  const submitRename = async () => {
+    if (!newRoomName.trim()) return;
+    setActionLoading(true);
+    try {
+      const resp = await fetch(
+        `http://localhost:3001/api/rooms/${encodeURIComponent(roomId)}`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ newName: newRoomName.trim() }),
+        }
+      );
+      if (resp.ok) {
+        await resp.json();
+        setShowRenameModal(false);
+        // Navigate to new route so providers reconnect with the new name
+        navigate(`/room/${newRoomName.trim()}`);
+      } else {
+        const err = await resp.json();
+        alert(err.error || "Failed to rename room");
+      }
+    } catch (e) {
+      console.error("Rename error", e);
+      alert("Network error renaming room");
+    } finally {
+      setActionLoading(false);
+    }
+  };
 
   function getColorForId(id) {
     const colors = [
@@ -915,6 +964,44 @@ export default function CodeEditor() {
           <span className="text-xs text-gray-500 dark:text-gray-400">
             Room: {roomId}
           </span>
+          {/* File menu */}
+          <div className="relative">
+            <button
+              onClick={() => setShowFileMenu((v) => !v)}
+              className="px-2 py-1 text-sm rounded-md text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
+              title="File"
+            >
+              File
+              <span className="ml-1">▾</span>
+            </button>
+            {showFileMenu && (
+              <div
+                className="absolute right-0 mt-2 w-52 bg-white dark:bg-gray-800 rounded-md shadow-lg ring-1 ring-gray-200 dark:ring-gray-700 z-50"
+                role="menu"
+              >
+                <button
+                  className="w-full text-left px-3 py-2 text-sm text-gray-400 dark:text-gray-500 cursor-not-allowed"
+                  disabled
+                  title="Coming soon"
+                  role="menuitem"
+                >
+                  Download as PDF
+                </button>
+                <button
+                  onClick={handleOpenRename}
+                  disabled={!isOwner}
+                  className={`w-full text-left px-3 py-2 text-sm ${
+                    isOwner
+                      ? "text-gray-800 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-700"
+                      : "text-gray-400 dark:text-gray-500 cursor-not-allowed"
+                  }`}
+                  role="menuitem"
+                >
+                  Rename
+                </button>
+              </div>
+            )}
+          </div>
           {hasAccess && (
             <button
               onClick={() => setShowSharedModal(true)}
@@ -964,6 +1051,77 @@ export default function CodeEditor() {
         theme={theme === "dark" ? "vs-dark" : "light"}
         onMount={handleEditorMount}
       />
+      {/* Rename Modal */}
+      {showRenameModal && (
+        <div
+          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+          onClick={() => setShowRenameModal(false)}
+        >
+          <div
+            className="bg-white dark:bg-gray-800 rounded-lg p-6 w-96 max-w-md mx-4"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                Rename Room
+              </h3>
+              <button
+                onClick={() => setShowRenameModal(false)}
+                className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+              >
+                <svg
+                  className="w-6 h-6"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M6 18L18 6M6 6l12 12"
+                  />
+                </svg>
+              </button>
+            </div>
+            <div className="space-y-4">
+              <div>
+                <label
+                  htmlFor="rename-input"
+                  className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+                >
+                  New name
+                </label>
+                <input
+                  id="rename-input"
+                  type="text"
+                  value={newRoomName}
+                  onChange={(e) => setNewRoomName(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && submitRename()}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+                  placeholder="Enter new room name"
+                  autoFocus
+                />
+              </div>
+              <div className="flex space-x-3">
+                <button
+                  onClick={submitRename}
+                  disabled={!newRoomName.trim() || actionLoading}
+                  className="flex-1 bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {actionLoading ? "Saving..." : "Save"}
+                </button>
+                <button
+                  onClick={() => setShowRenameModal(false)}
+                  className="flex-1 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 px-4 py-2 rounded-md hover:bg-gray-300 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-gray-400"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
       <SharedWithModal />
       <Chat
         roomName={roomId}

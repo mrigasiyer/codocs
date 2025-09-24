@@ -12,6 +12,10 @@ export default function Home() {
   const [sharingRoom, setSharingRoom] = useState(null);
   const [shareUsername, setShareUsername] = useState("");
   const [shareLoading, setShareLoading] = useState(false);
+  const [menuOpenId, setMenuOpenId] = useState(null);
+  const [renameRoom, setRenameRoom] = useState(null);
+  const [newRoomName, setNewRoomName] = useState("");
+  const [actionLoading, setActionLoading] = useState(false);
   const navigate = useNavigate();
   const { user, token, logout } = useAuth();
 
@@ -108,6 +112,75 @@ export default function Home() {
   const handleLogout = () => {
     logout();
     navigate("/login");
+  };
+
+  const requestRenameRoom = (room) => {
+    setRenameRoom(room);
+    setNewRoomName(room.name);
+    setMenuOpenId(null);
+  };
+
+  const submitRenameRoom = async () => {
+    if (!renameRoom || !newRoomName.trim()) return;
+    setActionLoading(true);
+    try {
+      const response = await fetch(
+        `http://localhost:3001/api/rooms/${encodeURIComponent(
+          renameRoom.name
+        )}`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ newName: newRoomName.trim() }),
+        }
+      );
+      if (response.ok) {
+        await response.json();
+        await fetchRooms();
+        setRenameRoom(null);
+        setNewRoomName("");
+      } else {
+        const err = await response.json();
+        alert(err.error || "Failed to rename room");
+      }
+    } catch (e) {
+      console.error("Rename error", e);
+      alert("Network error renaming room");
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const deleteRoom = async (room) => {
+    if (!room) return;
+    if (!confirm(`Delete room "${room.name}"? This cannot be undone.`)) return;
+    setActionLoading(true);
+    try {
+      const response = await fetch(
+        `http://localhost:3001/api/rooms/${encodeURIComponent(room.name)}`,
+        {
+          method: "DELETE",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+      if (response.ok) {
+        await response.json();
+        await fetchRooms();
+      } else {
+        const err = await response.json();
+        alert(err.error || "Failed to delete room");
+      }
+    } catch (e) {
+      console.error("Delete error", e);
+      alert("Network error deleting room");
+    } finally {
+      setActionLoading(false);
+    }
   };
 
   return (
@@ -315,6 +388,53 @@ export default function Home() {
                               Share
                             </button>
                           )}
+                          {isOwner && (
+                            <div className="relative">
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setMenuOpenId(
+                                    menuOpenId === room._id ? null : room._id
+                                  );
+                                }}
+                                className="p-1 rounded hover:bg-slate-200 dark:hover:bg-gray-600 text-slate-600 dark:text-gray-300"
+                                aria-haspopup="menu"
+                                aria-expanded={menuOpenId === room._id}
+                                title="More actions"
+                              >
+                                <svg
+                                  className="w-5 h-5"
+                                  viewBox="0 0 20 20"
+                                  fill="currentColor"
+                                  aria-hidden="true"
+                                >
+                                  <path d="M6 10a2 2 0 11-4 0 2 2 0 014 0zm6 0a2 2 0 11-4 0 2 2 0 014 0zm6 0a2 2 0 11-4 0 2 2 0 014 0z" />
+                                </svg>
+                              </button>
+                              {menuOpenId === room._id && (
+                                <div
+                                  className="absolute right-0 mt-2 w-40 bg-white dark:bg-gray-700 rounded-md shadow-lg ring-1 ring-slate-200 dark:ring-gray-600 z-10"
+                                  role="menu"
+                                  onClick={(e) => e.stopPropagation()}
+                                >
+                                  <button
+                                    className="w-full text-left px-3 py-2 text-sm hover:bg-slate-50 dark:hover:bg-gray-600 text-slate-700 dark:text-gray-200 rounded-t-md"
+                                    onClick={() => requestRenameRoom(room)}
+                                    role="menuitem"
+                                  >
+                                    Rename
+                                  </button>
+                                  <button
+                                    className="w-full text-left px-3 py-2 text-sm hover:bg-red-50 dark:hover:bg-red-900/30 text-red-600 dark:text-red-400 rounded-b-md"
+                                    onClick={() => deleteRoom(room)}
+                                    role="menuitem"
+                                  >
+                                    Delete
+                                  </button>
+                                </div>
+                              )}
+                            </div>
+                          )}
                           <span className="text-slate-400 dark:text-gray-500 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition">
                             →
                           </span>
@@ -388,6 +508,54 @@ export default function Home() {
                   onClick={() => {
                     setSharingRoom(null);
                     setShareUsername("");
+                  }}
+                  className="flex-1 bg-slate-200 dark:bg-gray-600 text-slate-700 dark:text-gray-300 px-4 py-2 rounded-md hover:bg-slate-300 dark:hover:bg-gray-500 focus:outline-none focus:ring-2 focus:ring-slate-500"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Rename Room Modal */}
+      {renameRoom && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white dark:bg-gray-800 rounded-lg p-6 w-96 max-w-md mx-4 shadow-xl ring-1 ring-slate-200 dark:ring-gray-700">
+            <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">
+              Rename Room
+            </h3>
+            <div className="space-y-4">
+              <div>
+                <label
+                  htmlFor="newRoomName"
+                  className="block text-sm font-medium text-slate-700 dark:text-gray-300 mb-1"
+                >
+                  New name
+                </label>
+                <input
+                  type="text"
+                  id="newRoomName"
+                  value={newRoomName}
+                  onChange={(e) => setNewRoomName(e.target.value)}
+                  className="w-full px-3 py-2 border border-slate-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white shadow-sm"
+                  placeholder="Enter new room name"
+                  onKeyDown={(e) => e.key === "Enter" && submitRenameRoom()}
+                />
+              </div>
+              <div className="flex space-x-3">
+                <button
+                  onClick={submitRenameRoom}
+                  disabled={!newRoomName.trim() || actionLoading}
+                  className="flex-1 bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {actionLoading ? "Saving..." : "Save"}
+                </button>
+                <button
+                  onClick={() => {
+                    setRenameRoom(null);
+                    setNewRoomName("");
                   }}
                   className="flex-1 bg-slate-200 dark:bg-gray-600 text-slate-700 dark:text-gray-300 px-4 py-2 rounded-md hover:bg-slate-300 dark:hover:bg-gray-500 focus:outline-none focus:ring-2 focus:ring-slate-500"
                 >

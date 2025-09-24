@@ -116,6 +116,110 @@ app.post("/api/rooms", authenticateToken, async (req, res) => {
   }
 });
 
+// Rename a room (owner only)
+app.patch("/api/rooms/:roomName", authenticateToken, async (req, res) => {
+  try {
+    const { roomName } = req.params;
+    const { newName } = req.body;
+
+    if (!newName || !newName.trim()) {
+      return res.status(400).json({ error: "New name is required" });
+    }
+
+    // Check for name conflict
+    const existing = await Room.findOne({ name: newName.trim() });
+    if (existing) {
+      return res
+        .status(400)
+        .json({ error: "A room with that name already exists" });
+    }
+
+    const room = await Room.findOne({ name: roomName });
+    if (!room) {
+      return res.status(404).json({ error: "Room not found" });
+    }
+
+    // Only owner can rename
+    if (room.owner.toString() !== req.user._id.toString()) {
+      return res
+        .status(403)
+        .json({ error: "Only the owner can rename this room" });
+    }
+
+    const oldName = room.name;
+    room.name = newName.trim();
+    await room.save();
+
+    // Update YDoc key if exists
+    try {
+      const ydoc = await YDocModel.findOne({ room: oldName });
+      if (ydoc) {
+        ydoc.room = room.name;
+        await ydoc.save();
+      }
+    } catch (e) {
+      console.warn("Failed to update YDoc on rename", e);
+    }
+
+    // Update chat messages roomName
+    try {
+      await Message.updateMany(
+        { roomName: oldName },
+        { $set: { roomName: room.name } }
+      );
+    } catch (e) {
+      console.warn("Failed to update messages on rename", e);
+    }
+
+    await room.populate("owner", "username displayName");
+    await room.populate("sharedWith.user", "username displayName");
+    return res.json({ message: "Room renamed", room });
+  } catch (err) {
+    console.error("Error renaming room:", err);
+    return res.status(500).json({ error: "Error renaming room" });
+  }
+});
+
+// Delete a room (owner only)
+app.delete("/api/rooms/:roomName", authenticateToken, async (req, res) => {
+  try {
+    const { roomName } = req.params;
+    const room = await Room.findOne({ name: roomName });
+    if (!room) {
+      return res.status(404).json({ error: "Room not found" });
+    }
+
+    // Only owner can delete
+    if (room.owner.toString() !== req.user._id.toString()) {
+      return res
+        .status(403)
+        .json({ error: "Only the owner can delete this room" });
+    }
+
+    // Delete room
+    await Room.deleteOne({ _id: room._id });
+
+    // Delete YDoc state
+    try {
+      await YDocModel.deleteOne({ room: room.name });
+    } catch (e) {
+      console.warn("Failed to delete YDoc on room delete", e);
+    }
+
+    // Delete chat messages
+    try {
+      await Message.deleteMany({ roomName: room.name });
+    } catch (e) {
+      console.warn("Failed to delete messages on room delete", e);
+    }
+
+    return res.json({ message: "Room deleted" });
+  } catch (err) {
+    console.error("Error deleting room:", err);
+    return res.status(500).json({ error: "Error deleting room" });
+  }
+});
+
 // Share a room with another user
 app.post("/api/rooms/:roomName/share", authenticateToken, async (req, res) => {
   const { roomName } = req.params;
