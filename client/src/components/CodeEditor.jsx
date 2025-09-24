@@ -29,8 +29,11 @@ export default function CodeEditor() {
   const [error, setError] = useState(null);
   const [roomInfo, setRoomInfo] = useState(null);
   const [showSharedModal, setShowSharedModal] = useState(false);
+  const [shareEmail, setShareEmail] = useState("");
+  const [sharing, setSharing] = useState(false);
+  const shareEmailRef = useRef(null);
   const [onlineUsers, setOnlineUsers] = useState([]);
-  const [showChat, setShowChat] = useState(false);
+  const [showChat, setShowChat] = useState(true);
 
   // Check room access on mount
   useEffect(() => {
@@ -70,6 +73,21 @@ export default function CodeEditor() {
 
     checkRoomAccess();
   }, [roomId, token, navigate]);
+
+  // Focus email input when modal opens and reset when it closes
+  useEffect(() => {
+    if (showSharedModal) {
+      // Small delay to ensure modal is rendered
+      setTimeout(() => {
+        if (shareEmailRef.current) {
+          shareEmailRef.current.focus();
+        }
+      }, 200);
+    } else {
+      // Reset email when modal closes
+      setShareEmail("");
+    }
+  }, [showSharedModal]);
 
   useEffect(() => {
     return () => {
@@ -163,6 +181,53 @@ export default function CodeEditor() {
     const last = parts[1]?.[0] || "";
     return (first + last).toUpperCase() || first.toUpperCase();
   }
+
+  // Share room with a user
+  const shareRoom = async (email) => {
+    if (!email.trim()) return;
+
+    setSharing(true);
+    try {
+      const response = await fetch(
+        `http://localhost:3001/api/rooms/${roomId}/share`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ email: email.trim() }),
+        }
+      );
+
+      if (response.ok) {
+        await response.json();
+        // Refresh room info to show updated sharing
+        const roomResponse = await fetch(
+          `http://localhost:3001/api/rooms/${roomId}/access`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        );
+        if (roomResponse.ok) {
+          const roomData = await roomResponse.json();
+          setRoomInfo(roomData.room);
+        }
+        setShareEmail("");
+        alert(`Room shared successfully with ${email}`);
+      } else {
+        const errorData = await response.json();
+        alert(`Failed to share room: ${errorData.error}`);
+      }
+    } catch (error) {
+      console.error("Error sharing room:", error);
+      alert("Error sharing room. Please try again.");
+    } finally {
+      setSharing(false);
+    }
+  };
 
   function ensureBaseCursorStylesInjected() {
     if (styleElRef.current) return;
@@ -642,6 +707,145 @@ export default function CodeEditor() {
     );
   }
 
+  // Modal component
+  const SharedWithModal = () => {
+    if (!showSharedModal || !roomInfo) return null;
+
+    const owner = roomInfo.owner;
+    const shared = roomInfo.sharedWith || [];
+
+    const handleShare = (e) => {
+      e.preventDefault();
+      if (shareEmail.trim() && !sharing) {
+        shareRoom(shareEmail);
+      }
+    };
+
+    return (
+      <div
+        className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+        onClick={() => setShowSharedModal(false)}
+      >
+        <div
+          className="bg-white dark:bg-gray-800 rounded-lg p-6 w-96 max-w-md mx-4 max-h-[80vh] overflow-y-auto"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+              Share Room
+            </h3>
+            <button
+              onClick={() => setShowSharedModal(false)}
+              className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+            >
+              <svg
+                className="w-6 h-6"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M6 18L18 6M6 6l12 12"
+                />
+              </svg>
+            </button>
+          </div>
+
+          <div className="space-y-4">
+            {/* Share with new user */}
+            <div>
+              <div className="text-sm text-gray-500 dark:text-gray-400 mb-2">
+                Share with someone new
+              </div>
+              <form
+                onSubmit={handleShare}
+                className="flex space-x-2"
+                onKeyDown={(e) => e.stopPropagation()}
+              >
+                <input
+                  ref={shareEmailRef}
+                  key="share-email-input"
+                  type="email"
+                  value={shareEmail}
+                  onChange={(e) => setShareEmail(e.target.value)}
+                  onKeyDown={(e) => {
+                    e.stopPropagation();
+                    e.nativeEvent.stopImmediatePropagation();
+                  }}
+                  onKeyUp={(e) => {
+                    e.stopPropagation();
+                    e.nativeEvent.stopImmediatePropagation();
+                  }}
+                  onInput={(e) => e.stopPropagation()}
+                  placeholder="Enter username"
+                  className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  required
+                  autoComplete="email"
+                />
+                <button
+                  type="submit"
+                  disabled={sharing || !shareEmail.trim()}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {sharing ? "Sharing..." : "Share"}
+                </button>
+              </form>
+            </div>
+
+            {/* Owner */}
+            <div>
+              <div className="text-sm text-gray-500 dark:text-gray-400 mb-1">
+                Owner
+              </div>
+              <div className="flex items-center justify-between bg-gray-50 dark:bg-gray-700 px-3 py-2 rounded">
+                <span className="text-gray-900 dark:text-white text-sm">
+                  {owner?.displayName || owner?.username}
+                </span>
+                <span className="text-xs text-blue-700 dark:text-blue-300 bg-blue-100 dark:bg-blue-900 px-2 py-0.5 rounded-full">
+                  Owner
+                </span>
+              </div>
+            </div>
+
+            {/* Shared with */}
+            <div>
+              <div className="text-sm text-gray-500 dark:text-gray-400 mb-1">
+                Shared with
+              </div>
+              {shared.length === 0 ? (
+                <div className="text-sm text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-700 px-3 py-2 rounded">
+                  Not shared with anyone yet
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {shared.map(
+                    (s) =>
+                      s.user && (
+                        <div
+                          key={s.user._id}
+                          className="flex items-center justify-between bg-gray-50 dark:bg-gray-700 px-3 py-2 rounded"
+                        >
+                          <span className="text-gray-900 dark:text-white text-sm">
+                            {s.user.displayName || s.user.username}
+                          </span>
+                          <span className="text-xs text-gray-600 dark:text-gray-400">
+                            {new Date(s.sharedAt).toLocaleDateString()}
+                          </span>
+                        </div>
+                      )
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div>
       {/* Connection Status Bar */}
@@ -686,31 +890,51 @@ export default function CodeEditor() {
           <span className="text-xs text-gray-500 dark:text-gray-400">
             Room: {roomId}
           </span>
-          <button
-            onClick={() => setShowChat(!showChat)}
-            className="text-sm bg-green-600 text-white px-3 py-1.5 rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500"
-          >
-            {showChat ? "Hide Chat" : "Chat"}
-          </button>
           {hasAccess && (
             <button
               onClick={() => setShowSharedModal(true)}
-              className="text-sm bg-gray-200 dark:bg-gray-600 text-gray-800 dark:text-gray-200 px-3 py-1.5 rounded-md hover:bg-gray-300 dark:hover:bg-gray-500 focus:outline-none focus:ring-2 focus:ring-gray-400"
+              className="p-2 text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md transition-colors"
+              title="Share room"
             >
-              Shared with
+              <svg
+                className="w-5 h-5"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.367 2.684 3 3 0 00-5.367-2.684z"
+                />
+              </svg>
             </button>
           )}
           <button
             onClick={() => navigate("/")}
-            className="text-sm bg-blue-600 text-white px-3 py-1.5 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="p-2 text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md transition-colors"
+            title="Home"
           >
-            Home
+            <svg
+              className="w-5 h-5"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"
+              />
+            </svg>
           </button>
         </div>
       </div>
 
       <Editor
-        height="calc(90vh - 48px)"
+        height="calc(100vh - 48px)"
         defaultLanguage="javascript"
         theme={theme === "dark" ? "vs-dark" : "light"}
         onMount={handleEditorMount}
@@ -723,74 +947,4 @@ export default function CodeEditor() {
       />
     </div>
   );
-
-  // Modal
-  function SharedWithModal() {
-    if (!showSharedModal || !roomInfo) return null;
-
-    const owner = roomInfo.owner;
-    const shared = roomInfo.sharedWith || [];
-
-    return (
-      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-        <div className="bg-white dark:bg-gray-800 rounded-lg p-6 w-96 max-w-md mx-4">
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-            Shared access
-          </h3>
-          <div className="space-y-4">
-            <div>
-              <div className="text-sm text-gray-500 dark:text-gray-400 mb-1">
-                Owner
-              </div>
-              <div className="flex items-center justify-between bg-gray-50 dark:bg-gray-700 px-3 py-2 rounded">
-                <span className="text-gray-900 dark:text-white text-sm">
-                  {owner?.displayName || owner?.username}
-                </span>
-                <span className="text-xs text-blue-700 dark:text-blue-300 bg-blue-100 dark:bg-blue-900 px-2 py-0.5 rounded-full">
-                  Owner
-                </span>
-              </div>
-            </div>
-            <div>
-              <div className="text-sm text-gray-500 dark:text-gray-400 mb-1">
-                Shared with
-              </div>
-              {shared.length === 0 ? (
-                <div className="text-sm text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-700 px-3 py-2 rounded">
-                  Not shared with anyone
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  {shared.map(
-                    (s) =>
-                      s.user && (
-                        <div
-                          key={s.user._id}
-                          className="flex items-center justify-between bg-gray-50 dark:bg-gray-700 px-3 py-2 rounded"
-                        >
-                          <span className="text-gray-900 dark:text-white text-sm">
-                            {s.user.displayName || s.user.username}
-                          </span>
-                          <span className="text-xs text-gray-600 dark:text-gray-400">
-                            {new Date(s.sharedAt).toLocaleDateString()}
-                          </span>
-                        </div>
-                      )
-                  )}
-                </div>
-              )}
-            </div>
-            <div className="flex justify-end space-x-2">
-              <button
-                onClick={() => setShowSharedModal(false)}
-                className="bg-gray-200 dark:bg-gray-600 text-gray-800 dark:text-gray-200 px-4 py-2 rounded-md hover:bg-gray-300 dark:hover:bg-gray-500 focus:outline-none focus:ring-2 focus:ring-gray-500"
-              >
-                Close
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
 }
