@@ -24,6 +24,7 @@ export default function CodeEditor() {
   const [connectionStatus, setConnectionStatus] =
     useState("Checking access...");
   const [isConnected, setIsConnected] = useState(false);
+  const [showStatusText, setShowStatusText] = useState(true);
   const [hasAccess, setHasAccess] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -34,6 +35,7 @@ export default function CodeEditor() {
   const shareEmailRef = useRef(null);
   const [onlineUsers, setOnlineUsers] = useState([]);
   const [showChat, setShowChat] = useState(true);
+  const statusHideTimeoutRef = useRef(null);
 
   // Check room access on mount
   useEffect(() => {
@@ -136,8 +138,29 @@ export default function CodeEditor() {
       if (typingTimeoutRef.current) {
         clearTimeout(typingTimeoutRef.current);
       }
+      if (statusHideTimeoutRef.current) {
+        clearTimeout(statusHideTimeoutRef.current);
+      }
     };
   }, []);
+
+  // Show status text while connecting/disconnected, hide shortly after connected
+  useEffect(() => {
+    if (isConnected) {
+      setShowStatusText(true);
+      if (statusHideTimeoutRef.current) {
+        clearTimeout(statusHideTimeoutRef.current);
+      }
+      statusHideTimeoutRef.current = setTimeout(() => {
+        setShowStatusText(false);
+      }, 2000);
+    } else {
+      if (statusHideTimeoutRef.current) {
+        clearTimeout(statusHideTimeoutRef.current);
+      }
+      setShowStatusText(true);
+    }
+  }, [isConnected, connectionStatus]);
 
   function getColorForId(id) {
     const colors = [
@@ -856,9 +879,11 @@ export default function CodeEditor() {
               isConnected ? "bg-green-500" : "bg-red-500"
             }`}
           ></div>
-          <span className="text-sm text-gray-600 dark:text-gray-300">
-            {connectionStatus}
-          </span>
+          {(!isConnected || showStatusText) && (
+            <span className="text-sm text-gray-600 dark:text-gray-300">
+              {connectionStatus}
+            </span>
+          )}
           <div className="hidden sm:flex items-center space-x-2 ml-4">
             <span className="text-xs text-gray-500 dark:text-gray-400">
               Online:
