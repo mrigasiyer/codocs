@@ -697,7 +697,6 @@ export default function CodeEditor() {
     provider.on("connection-error", (err) => {
       console.error("❌ WebSocket connection error:", err);
       setConnectionStatus("Connection Error");
-      setIsConnected(false);
     });
 
     // Handle connection close
@@ -920,133 +919,152 @@ export default function CodeEditor() {
 
   return (
     <div>
-      {/* Connection Status Bar */}
-      <div className="relative z-20 bg-gray-100 dark:bg-gray-800 px-4 py-2 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
-        <div className="flex items-center space-x-3">
-          <div
-            className={`w-2 h-2 rounded-full ${
-              isConnected ? "bg-green-500" : "bg-red-500"
-            }`}
-          ></div>
-          {(!isConnected || showStatusText) && (
-            <span className="text-sm text-gray-600 dark:text-gray-300">
-              {connectionStatus}
-            </span>
-          )}
-          <div className="hidden sm:flex items-center space-x-2 ml-4">
-            <span className="text-xs text-gray-500 dark:text-gray-400">
-              Online:
-            </span>
-            <div className="flex items-center -space-x-2">
-              {onlineUsers.map((u) => (
-                <div key={`${u.id}-${u.name}`} className="relative group">
-                  <div
-                    className="relative inline-flex items-center justify-center h-6 w-6 rounded-full ring-2 ring-white dark:ring-gray-800 text-white text-[10px] font-medium"
-                    title={u.name}
-                    aria-label={u.name}
-                    style={{ backgroundColor: u.color }}
-                  >
-                    {getInitials(u.name)}
-                  </div>
-                  <div className="pointer-events-none absolute z-50 top-2 left-1/2 -translate-x-1/2 translate-y-full whitespace-nowrap rounded px-2 py-1 text-xs text-white bg-gray-900/90 dark:bg-gray-100/90 dark:text-gray-900 opacity-0 group-hover:opacity-100 transition-opacity shadow-md">
-                    {u.name}
-                    <div className="absolute left-1/2 -top-1 -translate-x-1/2 border-4 border-transparent border-b-gray-900/90 dark:border-b-gray-100/90"></div>
-                  </div>
-                </div>
-              ))}
-            </div>
-            <span className="text-xs text-gray-500 dark:text-gray-400">
-              {onlineUsers.length}
-            </span>
-          </div>
-        </div>
-        <div className="flex items-center space-x-3">
-          <span className="text-xs text-gray-500 dark:text-gray-400">
-            Room: {roomId}
-          </span>
-          {/* File menu */}
-          <div className="relative">
+      {/* Header Bar */}
+      <div className="relative z-20 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700">
+        {/* Top Row - Room Name and Actions */}
+        <div className="px-4 py-3 flex items-center justify-between">
+          <div className="flex items-center space-x-4">
+            {/* Document Icon - Clickable Home Button */}
             <button
-              onClick={() => setShowFileMenu((v) => !v)}
-              className="px-2 py-1 text-sm rounded-md text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
-              title="File"
-            >
-              File
-              <span className="ml-1">▾</span>
-            </button>
-            {showFileMenu && (
-              <div
-                className="absolute right-0 mt-2 w-52 bg-white dark:bg-gray-800 rounded-md shadow-lg ring-1 ring-gray-200 dark:ring-gray-700 z-50"
-                role="menu"
-              >
-                <button
-                  className="w-full text-left px-3 py-2 text-sm text-gray-400 dark:text-gray-500 cursor-not-allowed"
-                  disabled
-                  title="Coming soon"
-                  role="menuitem"
-                >
-                  Download as PDF
-                </button>
-                <button
-                  onClick={handleOpenRename}
-                  disabled={!isOwner}
-                  className={`w-full text-left px-3 py-2 text-sm ${
-                    isOwner
-                      ? "text-gray-800 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-700"
-                      : "text-gray-400 dark:text-gray-500 cursor-not-allowed"
-                  }`}
-                  role="menuitem"
-                >
-                  Rename
-                </button>
-              </div>
-            )}
-          </div>
-          {hasAccess && (
-            <button
-              onClick={() => setShowSharedModal(true)}
-              className="p-2 text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md transition-colors"
-              title="Share room"
+              onClick={() => navigate("/")}
+              className="w-8 h-8 bg-blue-600 rounded flex items-center justify-center hover:bg-blue-700 transition-colors"
+              title="Home"
             >
               <svg
-                className="w-5 h-5"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
+                className="w-5 h-5 text-white"
+                fill="currentColor"
+                viewBox="0 0 20 20"
               >
                 <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.367 2.684 3 3 0 00-5.367-2.684z"
+                  fillRule="evenodd"
+                  d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 6a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 3a1 1 0 100 2h6a1 1 0 100-2H7z"
+                  clipRule="evenodd"
                 />
               </svg>
             </button>
-          )}
-          <button
-            onClick={() => navigate("/")}
-            className="p-2 text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md transition-colors"
-            title="Home"
-          >
-            <svg
-              className="w-5 h-5"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"
-              />
-            </svg>
-          </button>
+
+            {/* Room Name */}
+            <h1 className="text-xl font-medium text-gray-900 dark:text-white">
+              {roomId}
+            </h1>
+          </div>
+
+          {/* Right Side - Status and Collaboration */}
+          <div className="flex items-center space-x-3">
+            {/* Connection Status */}
+            <div className="flex items-center space-x-2">
+              <div
+                className={`w-2 h-2 rounded-full ${
+                  isConnected ? "bg-green-500" : "bg-red-500"
+                }`}
+              ></div>
+              {(!isConnected || showStatusText) && (
+                <span className="text-sm text-gray-600 dark:text-gray-300">
+                  {connectionStatus}
+                </span>
+              )}
+            </div>
+
+            {/* Online Users */}
+            <div className="hidden sm:flex items-center space-x-2">
+              <span className="text-xs text-gray-500 dark:text-gray-400">
+                Online:
+              </span>
+              <div className="flex items-center -space-x-2">
+                {onlineUsers.map((u) => (
+                  <div key={`${u.id}-${u.name}`} className="relative group">
+                    <div
+                      className="relative inline-flex items-center justify-center h-6 w-6 rounded-full ring-2 ring-white dark:ring-gray-800 text-white text-[10px] font-medium"
+                      title={u.name}
+                      aria-label={u.name}
+                      style={{ backgroundColor: u.color }}
+                    >
+                      {getInitials(u.name)}
+                    </div>
+                    <div className="pointer-events-none absolute z-50 top-2 left-1/2 -translate-x-1/2 translate-y-full whitespace-nowrap rounded px-2 py-1 text-xs text-white bg-gray-900/90 dark:bg-gray-100/90 dark:text-gray-900 opacity-0 group-hover:opacity-100 transition-opacity shadow-md">
+                      {u.name}
+                      <div className="absolute left-1/2 -top-1 -translate-x-1/2 border-4 border-transparent border-b-gray-900/90 dark:border-b-gray-100/90"></div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <span className="text-xs text-gray-500 dark:text-gray-400">
+                {onlineUsers.length}
+              </span>
+            </div>
+
+            {/* Share Button */}
+            {hasAccess && (
+              <button
+                onClick={() => setShowSharedModal(true)}
+                className="p-2 text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-md transition-colors"
+                title="Share room"
+              >
+                <svg
+                  className="w-5 h-5"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.367 2.684 3 3 0 00-5.367-2.684z"
+                  />
+                </svg>
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* Bottom Row - File Menu */}
+        <div className="px-4 py-2 border-t border-gray-100 dark:border-gray-800">
+          <div className="flex items-center space-x-6">
+            {/* File menu */}
+            <div className="relative">
+              <button
+                onClick={() => setShowFileMenu((v) => !v)}
+                className="px-3 py-1 text-sm font-medium text-gray-700 dark:text-gray-200 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800 rounded-md transition-colors"
+                title="File"
+              >
+                File
+                <span className="ml-1">▾</span>
+              </button>
+              {showFileMenu && (
+                <div
+                  className="absolute left-0 mt-2 w-52 bg-white dark:bg-gray-800 rounded-md shadow-lg ring-1 ring-gray-200 dark:ring-gray-700 z-50"
+                  role="menu"
+                >
+                  <button
+                    className="w-full text-left px-3 py-2 text-sm text-gray-400 dark:text-gray-500 cursor-not-allowed"
+                    disabled
+                    title="Coming soon"
+                    role="menuitem"
+                  >
+                    Download as PDF
+                  </button>
+                  <button
+                    onClick={handleOpenRename}
+                    disabled={!isOwner}
+                    className={`w-full text-left px-3 py-2 text-sm ${
+                      isOwner
+                        ? "text-gray-800 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-700"
+                        : "text-gray-400 dark:text-gray-500 cursor-not-allowed"
+                    }`}
+                    role="menuitem"
+                  >
+                    Rename
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
         </div>
       </div>
 
       <Editor
-        height="calc(100vh - 48px)"
+        height="calc(100vh - 88px)"
         defaultLanguage="javascript"
         theme={theme === "dark" ? "vs-dark" : "light"}
         onMount={handleEditorMount}
