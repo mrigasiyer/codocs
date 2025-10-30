@@ -35,11 +35,19 @@ export default function CodeEditor() {
   const shareEmailRef = useRef(null);
   const [onlineUsers, setOnlineUsers] = useState([]);
   const [showChat, setShowChat] = useState(false);
+  const [showConsole, setShowConsole] = useState(false);
+  const [consoleHeight, setConsoleHeight] = useState(200);
+  const [isResizing, setIsResizing] = useState(false);
+  const [consoleOutput, setConsoleOutput] = useState([]);
   const statusHideTimeoutRef = useRef(null);
+  const resizeRef = useRef(null);
   const [showFileMenu, setShowFileMenu] = useState(false);
   const [showRenameModal, setShowRenameModal] = useState(false);
   const [newRoomName, setNewRoomName] = useState("");
   const [actionLoading, setActionLoading] = useState(false);
+  const [showExportModal, setShowExportModal] = useState(false);
+  const [exportFileName, setExportFileName] = useState("");
+  const [exportFileType, setExportFileType] = useState("js");
 
   // Check room access on mount
   useEffect(() => {
@@ -172,11 +180,167 @@ export default function CodeEditor() {
     roomInfo.owner._id === user?.id
   );
 
+  // Handle console resize
+  const handleMouseDown = (e) => {
+    e.preventDefault();
+    setIsResizing(true);
+  };
+
+  const handleMouseMove = (e) => {
+    if (!isResizing) return;
+
+    const newHeight = window.innerHeight - e.clientY - 88; // 88px for header
+    const minHeight = 100;
+    const maxHeight = window.innerHeight - 200; // Leave some space for editor
+
+    if (newHeight >= minHeight && newHeight <= maxHeight) {
+      setConsoleHeight(newHeight);
+    }
+  };
+
+  const handleMouseUp = () => {
+    setIsResizing(false);
+  };
+
+  useEffect(() => {
+    if (isResizing) {
+      document.addEventListener("mousemove", handleMouseMove);
+      document.addEventListener("mouseup", handleMouseUp);
+      document.body.style.cursor = "ns-resize";
+      document.body.style.userSelect = "none";
+    } else {
+      document.removeEventListener("mousemove", handleMouseMove);
+      document.removeEventListener("mouseup", handleMouseUp);
+      document.body.style.cursor = "";
+      document.body.style.userSelect = "";
+    }
+
+    return () => {
+      document.removeEventListener("mousemove", handleMouseMove);
+      document.removeEventListener("mouseup", handleMouseUp);
+      document.body.style.cursor = "";
+      document.body.style.userSelect = "";
+    };
+  }, [isResizing]);
+
+  // Execute code from editor
+  const executeEditorCode = (code) => {
+    if (!code.trim()) return;
+
+    // Capture console.log output
+    const originalLog = console.log;
+    const originalError = console.error;
+    const originalWarn = console.warn;
+    const originalInfo = console.info;
+
+    const capturedOutput = [];
+
+    console.log = (...args) => {
+      originalLog(...args);
+      capturedOutput.push({ type: "log", message: args.join(" ") });
+    };
+
+    console.error = (...args) => {
+      originalError(...args);
+      capturedOutput.push({ type: "error", message: args.join(" ") });
+    };
+
+    console.warn = (...args) => {
+      originalWarn(...args);
+      capturedOutput.push({ type: "warn", message: args.join(" ") });
+    };
+
+    console.info = (...args) => {
+      originalInfo(...args);
+      capturedOutput.push({ type: "info", message: args.join(" ") });
+    };
+
+    try {
+      // Create a safe execution context
+      const result = new Function(code)();
+
+      // Add captured console output
+      capturedOutput.forEach((output) => {
+        setConsoleOutput((prev) => [
+          ...prev,
+          {
+            id: Date.now() + Math.random(),
+            type: output.type,
+            message: output.message,
+            timestamp: new Date().toLocaleTimeString(),
+          },
+        ]);
+      });
+
+      if (result !== undefined) {
+        setConsoleOutput((prev) => [
+          ...prev,
+          {
+            id: Date.now() + Math.random(),
+            type: "result",
+            message: String(result),
+            timestamp: new Date().toLocaleTimeString(),
+          },
+        ]);
+      }
+    } catch (error) {
+      setConsoleOutput((prev) => [
+        ...prev,
+        {
+          id: Date.now() + Math.random(),
+          type: "error",
+          message: error.message,
+          timestamp: new Date().toLocaleTimeString(),
+        },
+      ]);
+    } finally {
+      // Restore original console methods
+      console.log = originalLog;
+      console.error = originalError;
+      console.warn = originalWarn;
+      console.info = originalInfo;
+    }
+  };
+
   const handleOpenRename = () => {
     if (!isOwner || !roomInfo?.name) return;
     setNewRoomName(roomInfo.name);
     setShowRenameModal(true);
     setShowFileMenu(false);
+  };
+
+  const handleOpenExport = () => {
+    setExportFileName(roomId || "code");
+    setShowExportModal(true);
+    setShowFileMenu(false);
+  };
+
+  const handleExportFile = () => {
+    const code = editorRef.current?.getValue() || "";
+    if (!code.trim()) {
+      alert("No code to export!");
+      return;
+    }
+
+    const fileName = exportFileName.trim() || "code";
+    const fullFileName = `${fileName}.${exportFileType}`;
+
+    // Create a blob with the code content
+    const blob = new Blob([code], { type: "text/plain" });
+    const url = URL.createObjectURL(blob);
+
+    // Create a temporary link and trigger download
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = fullFileName;
+    document.body.appendChild(link);
+    link.click();
+
+    // Cleanup
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+
+    setShowExportModal(false);
   };
 
   const submitRename = async () => {
@@ -993,6 +1157,33 @@ export default function CodeEditor() {
               </span>
             </div>
 
+            {/* Chat Button removed per layout change */}
+
+            {/* Console Button */}
+            <button
+              onClick={() => setShowConsole(!showConsole)}
+              className={`p-2 rounded-md transition-colors ${
+                showConsole
+                  ? "bg-green-100 dark:bg-green-900 text-green-600 dark:text-green-400"
+                  : "text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800"
+              }`}
+              title={showConsole ? "Hide console" : "Show console"}
+            >
+              <svg
+                className="w-5 h-5"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
+                />
+              </svg>
+            </button>
+
             {/* Share Button */}
             {hasAccess && (
               <button
@@ -1010,65 +1201,191 @@ export default function CodeEditor() {
                     strokeLinecap="round"
                     strokeLinejoin="round"
                     strokeWidth={2}
-                    d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.367 2.684 3 3 0 00-5.367-2.684z"
+                    d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684z"
                   />
                 </svg>
               </button>
             )}
+
+            {/* Chat Toggle (moved to top bar next to Share) */}
+            <button
+              onClick={() => setShowChat(!showChat)}
+              className="p-2 text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-md transition-colors"
+              title={showChat ? "Hide chat" : "Show chat"}
+            >
+              <svg
+                className="w-5 h-5"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
+                />
+              </svg>
+            </button>
           </div>
         </div>
 
         {/* Bottom Row - File Menu */}
         <div className="px-4 py-2 border-t border-gray-100 dark:border-gray-800">
-          <div className="flex items-center space-x-6">
-            {/* File menu */}
-            <div className="relative">
-              <button
-                onClick={() => setShowFileMenu((v) => !v)}
-                className="px-3 py-1 text-sm font-medium text-gray-700 dark:text-gray-200 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800 rounded-md transition-colors"
-                title="File"
-              >
-                File
-                <span className="ml-1">▾</span>
-              </button>
-              {showFileMenu && (
-                <div
-                  className="absolute left-0 mt-2 w-52 bg-white dark:bg-gray-800 rounded-md shadow-lg ring-1 ring-gray-200 dark:ring-gray-700 z-50"
-                  role="menu"
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-6">
+              {/* File menu */}
+              <div className="relative">
+                <button
+                  onClick={() => setShowFileMenu((v) => !v)}
+                  className="px-3 py-1 text-sm font-medium text-gray-700 dark:text-gray-200 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800 rounded-md transition-colors"
+                  title="File"
                 >
-                  <button
-                    className="w-full text-left px-3 py-2 text-sm text-gray-400 dark:text-gray-500 cursor-not-allowed"
-                    disabled
-                    title="Coming soon"
-                    role="menuitem"
+                  File
+                  <span className="ml-1">▾</span>
+                </button>
+                {showFileMenu && (
+                  <div
+                    className="absolute left-0 mt-2 w-52 bg-white dark:bg-gray-800 rounded-md shadow-lg ring-1 ring-gray-200 dark:ring-gray-700 z-50"
+                    role="menu"
                   >
-                    Download as PDF
-                  </button>
-                  <button
-                    onClick={handleOpenRename}
-                    disabled={!isOwner}
-                    className={`w-full text-left px-3 py-2 text-sm ${
-                      isOwner
-                        ? "text-gray-800 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-700"
-                        : "text-gray-400 dark:text-gray-500 cursor-not-allowed"
-                    }`}
-                    role="menuitem"
-                  >
-                    Rename
-                  </button>
-                </div>
-              )}
+                    <button
+                      onClick={handleOpenExport}
+                      className="w-full text-left px-3 py-2 text-sm text-gray-800 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-700"
+                      role="menuitem"
+                    >
+                      Export Code
+                    </button>
+                    <button
+                      onClick={handleOpenRename}
+                      disabled={!isOwner}
+                      className={`w-full text-left px-3 py-2 text-sm ${
+                        isOwner
+                          ? "text-gray-800 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-700"
+                          : "text-gray-400 dark:text-gray-500 cursor-not-allowed"
+                      }`}
+                      role="menuitem"
+                    >
+                      Rename
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </div>
       </div>
 
-      <Editor
-        height="calc(100vh - 88px)"
-        defaultLanguage="javascript"
-        theme={theme === "dark" ? "vs-dark" : "light"}
-        onMount={handleEditorMount}
-      />
+      <div className="flex flex-col h-[calc(100vh-88px)]">
+        {/* Editor Section */}
+        <div
+          className="relative"
+          style={{
+            height: showConsole ? `calc(100% - ${consoleHeight}px)` : "100%",
+          }}
+        >
+          <Editor
+            height="100%"
+            defaultLanguage="javascript"
+            theme={theme === "dark" ? "vs-dark" : "light"}
+            onMount={handleEditorMount}
+          />
+        </div>
+
+        {/* Console Panel - Always present but can be collapsed */}
+        <div
+          className="bg-gray-900 border-t border-gray-700 flex flex-col"
+          style={{
+            height: showConsole ? `${consoleHeight}px` : "0px",
+            overflow: "hidden",
+          }}
+        >
+          {/* Resize Handle */}
+          {showConsole && (
+            <div
+              ref={resizeRef}
+              onMouseDown={handleMouseDown}
+              className="h-1 bg-gray-600 hover:bg-gray-500 cursor-ns-resize flex items-center justify-center group"
+            >
+              <div className="w-8 h-0.5 bg-gray-400 group-hover:bg-gray-300 rounded"></div>
+            </div>
+          )}
+
+          {/* Console Header */}
+          <div className="bg-gray-800 text-white px-4 py-2 flex justify-between items-center border-b border-gray-700">
+            <div className="flex items-center space-x-3">
+              <h3 className="font-semibold">Console</h3>
+              <div className="flex items-center space-x-2 text-xs text-gray-400">
+                <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                <span>Ready</span>
+              </div>
+            </div>
+            <div className="flex items-center space-x-2">
+              <button
+                onClick={() => setConsoleOutput([])}
+                className="text-gray-400 hover:text-white text-sm px-2 py-1 rounded hover:bg-gray-700"
+                title="Clear console"
+              >
+                Clear
+              </button>
+              <button
+                onClick={() => setShowConsole(false)}
+                className="text-gray-400 hover:text-white focus:outline-none p-1 rounded hover:bg-gray-700"
+                title="Hide console"
+              >
+                <svg
+                  className="w-4 h-4"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M19 9l-7 7-7-7"
+                  />
+                </svg>
+              </button>
+            </div>
+          </div>
+
+          {/* Console Output */}
+          <div className="flex-1 overflow-y-auto p-3 space-y-1 font-mono text-sm">
+            {consoleOutput.length === 0 ? (
+              <div className="text-gray-500 text-center py-8">
+                <div className="text-2xl mb-2">⚡</div>
+                <p>Console ready. Click Run to execute your code.</p>
+              </div>
+            ) : (
+              consoleOutput.map((item) => (
+                <div key={item.id} className="flex items-start space-x-2">
+                  <span className="text-gray-500 text-xs mt-0.5 min-w-[40px]">
+                    {item.timestamp}
+                  </span>
+                  <span
+                    className={`flex-1 ${
+                      item.type === "error"
+                        ? "text-red-400"
+                        : item.type === "warn"
+                        ? "text-yellow-400"
+                        : item.type === "info"
+                        ? "text-blue-400"
+                        : item.type === "input"
+                        ? "text-green-400"
+                        : item.type === "result"
+                        ? "text-white"
+                        : "text-gray-300"
+                    }`}
+                  >
+                    {item.message}
+                  </span>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+      </div>
       {/* Rename Modal */}
       {showRenameModal && (
         <div
@@ -1140,12 +1457,132 @@ export default function CodeEditor() {
           </div>
         </div>
       )}
+      {/* Export Modal */}
+      {showExportModal && (
+        <div
+          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+          onClick={() => setShowExportModal(false)}
+        >
+          <div
+            className="bg-white dark:bg-gray-800 rounded-lg p-6 w-96 max-w-md mx-4"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                Export Code
+              </h3>
+              <button
+                onClick={() => setShowExportModal(false)}
+                className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+              >
+                <svg
+                  className="w-6 h-6"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M6 18L18 6M6 6l12 12"
+                  />
+                </svg>
+              </button>
+            </div>
+            <div className="space-y-4">
+              <div>
+                <label
+                  htmlFor="export-filename"
+                  className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+                >
+                  File name
+                </label>
+                <input
+                  id="export-filename"
+                  type="text"
+                  value={exportFileName}
+                  onChange={(e) => setExportFileName(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && handleExportFile()}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+                  placeholder="Enter file name"
+                  autoFocus
+                />
+              </div>
+              <div>
+                <label
+                  htmlFor="export-filetype"
+                  className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+                >
+                  File type
+                </label>
+                <select
+                  id="export-filetype"
+                  value={exportFileType}
+                  onChange={(e) => setExportFileType(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+                >
+                  <option value="js">JavaScript (.js)</option>
+                  <option value="jsx">React (.jsx)</option>
+                  <option value="ts">TypeScript (.ts)</option>
+                  <option value="tsx">React TypeScript (.tsx)</option>
+                  <option value="py">Python (.py)</option>
+                  <option value="java">Java (.java)</option>
+                  <option value="cpp">C++ (.cpp)</option>
+                  <option value="c">C (.c)</option>
+                  <option value="html">HTML (.html)</option>
+                  <option value="css">CSS (.css)</option>
+                  <option value="json">JSON (.json)</option>
+                  <option value="xml">XML (.xml)</option>
+                  <option value="md">Markdown (.md)</option>
+                  <option value="txt">Text (.txt)</option>
+                </select>
+              </div>
+              <div className="flex space-x-3">
+                <button
+                  onClick={handleExportFile}
+                  disabled={!exportFileName.trim()}
+                  className="flex-1 bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Export
+                </button>
+                <button
+                  onClick={() => setShowExportModal(false)}
+                  className="flex-1 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 px-4 py-2 rounded-md hover:bg-gray-300 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-gray-400"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
       <SharedWithModal />
       <Chat
         roomName={roomId}
         isVisible={showChat}
         onToggle={() => setShowChat(!showChat)}
       />
+      {/* Floating Run Button (bottom-right) */}
+      <button
+        onClick={() => {
+          const code = editorRef.current?.getValue() || "";
+          executeEditorCode(code);
+          if (!showConsole) setShowConsole(true);
+        }}
+        className="fixed bottom-6 right-6 z-40 w-14 h-14 rounded-full bg-green-600 hover:bg-green-700 text-white shadow-lg focus:outline-none focus:ring-2 focus:ring-green-500 flex items-center justify-center"
+        title="Run Code"
+        aria-label="Run code"
+      >
+        <svg
+          className="w-6 h-6"
+          fill="currentColor"
+          viewBox="0 0 20 20"
+          aria-hidden="true"
+        >
+          <path d="M6.5 5.5v9l8-4.5-8-4.5z" />
+        </svg>
+      </button>
     </div>
   );
 }

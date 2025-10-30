@@ -150,39 +150,20 @@ export default function Chat({ roomName, isVisible, onToggle }) {
   };
 
   if (!isVisible) {
-    return (
-      <div className="fixed bottom-4 right-4 z-50">
-        <button
-          onClick={onToggle}
-          className="bg-blue-600 text-white p-3 rounded-full shadow-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
-          title="Open Chat"
-        >
-          <svg
-            className="w-6 h-6"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
-            />
-          </svg>
-        </button>
-      </div>
-    );
+    return null;
   }
 
   return (
-    <div className="fixed bottom-4 right-4 w-80 h-96 bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700 flex flex-col z-50">
+    <div
+      className="fixed right-4 bg-white dark:bg-gray-800 shadow-xl border border-gray-200 dark:border-gray-700 rounded-lg flex flex-col z-50"
+      style={{ top: "100px", width: "380px", height: "500px" }}
+    >
       {/* Chat Header */}
-      <div className="bg-blue-600 text-white p-3 rounded-t-lg flex justify-between items-center">
-        <h3 className="font-semibold">Chat - {roomName}</h3>
+      <div className="bg-gray-100 dark:bg-gray-900 text-gray-900 dark:text-white px-4 py-3 flex justify-between items-center border-b border-gray-200 dark:border-gray-700 rounded-t-lg">
+        <h3 className="font-semibold text-sm">Chat — {roomName}</h3>
         <button
           onClick={onToggle}
-          className="text-white hover:text-gray-200 focus:outline-none"
+          className="text-gray-600 dark:text-gray-300 hover:text-gray-800 dark:hover:text-gray-100 focus:outline-none"
         >
           <svg
             className="w-5 h-5"
@@ -263,7 +244,7 @@ export default function Chat({ roomName, isVisible, onToggle }) {
       </div>
 
       {/* Message Input */}
-      <div className="p-3 border-t border-gray-200 dark:border-gray-700">
+      <div className="p-3 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
         <form onSubmit={handleSendMessage} className="flex space-x-2">
           <input
             type="text"
