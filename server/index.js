@@ -310,6 +310,34 @@ app.delete(
   }
 );
 
+// Search for users by username
+app.get("/api/users/search", authenticateToken, async (req, res) => {
+  try {
+    const { query } = req.query;
+
+    if (!query || query.trim().length < 1) {
+      return res.json([]);
+    }
+
+    // Search for users by username or displayName, case-insensitive
+    // Exclude the current user from results
+    const users = await User.find({
+      _id: { $ne: req.user._id },
+      $or: [
+        { username: { $regex: query, $options: "i" } },
+        { displayName: { $regex: query, $options: "i" } },
+      ],
+    })
+      .select("username displayName")
+      .limit(5); // Limit to 5 results
+
+    res.json(users);
+  } catch (err) {
+    console.error("Error searching users:", err);
+    res.status(500).json({ error: "Error searching users" });
+  }
+});
+
 // Check if user has access to a specific room
 app.get("/api/rooms/:roomName/access", authenticateToken, async (req, res) => {
   const { roomName } = req.params;

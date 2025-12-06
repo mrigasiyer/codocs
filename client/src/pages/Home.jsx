@@ -111,7 +111,7 @@ export default function Home() {
 
   const handleLogout = () => {
     logout();
-    navigate("/login");
+    navigate("/");
   };
 
   const requestRenameRoom = (room) => {

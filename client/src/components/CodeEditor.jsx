@@ -8,6 +8,214 @@ import { useAuth } from "../hooks/useAuth";
 import { useTheme } from "../hooks/useTheme";
 import Chat from "./Chat";
 
+// SharedWithModal component - moved outside to prevent re-creation on every render
+const SharedWithModal = ({
+  showSharedModal,
+  roomInfo,
+  setShowSharedModal,
+  shareUsername,
+  handleUsernameChange,
+  sharing,
+  shareRoom,
+  shareUsernameRef,
+  userSearchResults,
+  searchingUsers,
+  setUserSearchResults,
+  setShareUsername,
+}) => {
+  if (!showSharedModal || !roomInfo) return null;
+
+  const owner = roomInfo.owner;
+  const shared = roomInfo.sharedWith || [];
+
+  const handleShare = (e) => {
+    e.preventDefault();
+    if (shareUsername.trim() && !sharing) {
+      shareRoom(shareUsername);
+    }
+  };
+
+  const handleSelectUser = (username) => {
+    setShareUsername(username);
+    setUserSearchResults([]);
+    shareRoom(username);
+  };
+
+  return (
+    <div
+      className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+      onClick={() => setShowSharedModal(false)}
+    >
+      <div
+        className="bg-white dark:bg-gray-800 rounded-lg p-6 w-96 max-w-md mx-4 max-h-[80vh] overflow-y-auto"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+            Share Room
+          </h3>
+          <button
+            onClick={() => setShowSharedModal(false)}
+            className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+          >
+            <svg
+              className="w-6 h-6"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M6 18L18 6M6 6l12 12"
+              />
+            </svg>
+          </button>
+        </div>
+
+        <div className="space-y-4">
+          {/* Share with new user */}
+          <div>
+            <div className="text-sm text-gray-500 dark:text-gray-400 mb-2">
+              Share with someone new
+            </div>
+            <form
+              onSubmit={handleShare}
+              className="flex space-x-2 relative"
+              onKeyDown={(e) => e.stopPropagation()}
+            >
+              <div className="flex-1 relative">
+                <input
+                  ref={shareUsernameRef}
+                  id="share-username-input"
+                  name="shareUsername"
+                  type="text"
+                  value={shareUsername}
+                  onChange={(e) => handleUsernameChange(e.target.value)}
+                  onKeyDown={(e) => {
+                    e.stopPropagation();
+                    e.nativeEvent.stopImmediatePropagation();
+                    // Close dropdown on Escape
+                    if (e.key === "Escape") {
+                      setUserSearchResults([]);
+                    }
+                  }}
+                  onKeyUp={(e) => {
+                    e.stopPropagation();
+                    e.nativeEvent.stopImmediatePropagation();
+                  }}
+                  onInput={(e) => e.stopPropagation()}
+                  placeholder="Enter username"
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  required
+                  autoComplete="off"
+                />
+                {/* Autocomplete dropdown */}
+                {shareUsername.trim() && userSearchResults.length > 0 && (
+                  <div className="absolute z-10 w-full mt-1 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-lg max-h-48 overflow-y-auto">
+                    {userSearchResults.map((user) => (
+                      <button
+                        key={user._id}
+                        type="button"
+                        onClick={() => handleSelectUser(user.username)}
+                        className="w-full text-left px-3 py-2 hover:bg-gray-100 dark:hover:bg-gray-600 flex flex-col border-b border-gray-200 dark:border-gray-600 last:border-b-0"
+                      >
+                        <span className="text-sm font-medium text-gray-900 dark:text-white">
+                          {user.username}
+                        </span>
+                        {user.displayName &&
+                          user.displayName !== user.username && (
+                            <span className="text-xs text-gray-500 dark:text-gray-400">
+                              {user.displayName}
+                            </span>
+                          )}
+                      </button>
+                    ))}
+                  </div>
+                )}
+                {/* Loading indicator */}
+                {searchingUsers && shareUsername.trim() && (
+                  <div className="absolute z-10 w-full mt-1 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-lg p-3">
+                    <div className="text-sm text-gray-500 dark:text-gray-400 flex items-center">
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600 dark:border-blue-400 mr-2"></div>
+                      Searching...
+                    </div>
+                  </div>
+                )}
+                {/* No results message */}
+                {!searchingUsers &&
+                  shareUsername.trim() &&
+                  userSearchResults.length === 0 &&
+                  shareUsername.length >= 1 && (
+                    <div className="absolute z-10 w-full mt-1 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-lg p-3">
+                      <div className="text-sm text-gray-500 dark:text-gray-400">
+                        No users found
+                      </div>
+                    </div>
+                  )}
+              </div>
+              <button
+                type="submit"
+                disabled={sharing || !shareUsername.trim()}
+                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {sharing ? "Sharing..." : "Share"}
+              </button>
+            </form>
+          </div>
+
+          {/* Owner */}
+          <div>
+            <div className="text-sm text-gray-500 dark:text-gray-400 mb-1">
+              Owner
+            </div>
+            <div className="flex items-center justify-between bg-gray-50 dark:bg-gray-700 px-3 py-2 rounded">
+              <span className="text-gray-900 dark:text-white text-sm">
+                {owner?.displayName || owner?.username}
+              </span>
+              <span className="text-xs text-blue-700 dark:text-blue-300 bg-blue-100 dark:bg-blue-900 px-2 py-0.5 rounded-full">
+                Owner
+              </span>
+            </div>
+          </div>
+
+          {/* Shared with */}
+          <div>
+            <div className="text-sm text-gray-500 dark:text-gray-400 mb-1">
+              Shared with
+            </div>
+            {shared.length === 0 ? (
+              <div className="text-sm text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-700 px-3 py-2 rounded">
+                Not shared with anyone yet
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {shared.map(
+                  (s) =>
+                    s.user && (
+                      <div
+                        key={s.user._id}
+                        className="flex items-center justify-between bg-gray-50 dark:bg-gray-700 px-3 py-2 rounded"
+                      >
+                        <span className="text-gray-900 dark:text-white text-sm">
+                          {s.user.displayName || s.user.username}
+                        </span>
+                        <span className="text-xs text-gray-600 dark:text-gray-400">
+                          {new Date(s.sharedAt).toLocaleDateString()}
+                        </span>
+                      </div>
+                    )
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 export default function CodeEditor() {
   const { roomId } = useParams();
   const navigate = useNavigate();
@@ -30,9 +238,12 @@ export default function CodeEditor() {
   const [error, setError] = useState(null);
   const [roomInfo, setRoomInfo] = useState(null);
   const [showSharedModal, setShowSharedModal] = useState(false);
-  const [shareEmail, setShareEmail] = useState("");
+  const [shareUsername, setShareUsername] = useState("");
   const [sharing, setSharing] = useState(false);
-  const shareEmailRef = useRef(null);
+  const shareUsernameRef = useRef(null);
+  const [userSearchResults, setUserSearchResults] = useState([]);
+  const [searchingUsers, setSearchingUsers] = useState(false);
+  const searchTimeoutRef = useRef(null);
   const [onlineUsers, setOnlineUsers] = useState([]);
   const [showChat, setShowChat] = useState(false);
   const [showConsole, setShowConsole] = useState(false);
@@ -88,18 +299,19 @@ export default function CodeEditor() {
     checkRoomAccess();
   }, [roomId, token, navigate]);
 
-  // Focus email input when modal opens and reset when it closes
+  // Focus username input when modal opens and reset when it closes
   useEffect(() => {
     if (showSharedModal) {
       // Small delay to ensure modal is rendered
       setTimeout(() => {
-        if (shareEmailRef.current) {
-          shareEmailRef.current.focus();
+        if (shareUsernameRef.current) {
+          shareUsernameRef.current.focus();
         }
       }, 200);
     } else {
-      // Reset email when modal closes
-      setShareEmail("");
+      // Reset username and search results when modal closes
+      setShareUsername("");
+      setUserSearchResults([]);
     }
   }, [showSharedModal]);
 
@@ -152,6 +364,9 @@ export default function CodeEditor() {
       }
       if (statusHideTimeoutRef.current) {
         clearTimeout(statusHideTimeoutRef.current);
+      }
+      if (searchTimeoutRef.current) {
+        clearTimeout(searchTimeoutRef.current);
       }
     };
   }, []);
@@ -418,9 +633,58 @@ export default function CodeEditor() {
     return (first + last).toUpperCase() || first.toUpperCase();
   }
 
+  // Search for users by username
+  const searchUsers = async (query) => {
+    if (!query || query.trim().length < 1) {
+      setUserSearchResults([]);
+      return;
+    }
+
+    setSearchingUsers(true);
+    try {
+      const response = await fetch(
+        `http://localhost:3001/api/users/search?query=${encodeURIComponent(
+          query.trim()
+        )}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      if (response.ok) {
+        const users = await response.json();
+        setUserSearchResults(users);
+      } else {
+        setUserSearchResults([]);
+      }
+    } catch (error) {
+      console.error("Error searching users:", error);
+      setUserSearchResults([]);
+    } finally {
+      setSearchingUsers(false);
+    }
+  };
+
+  // Handle username input change with debouncing
+  const handleUsernameChange = (value) => {
+    setShareUsername(value);
+
+    // Clear previous timeout
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current);
+    }
+
+    // Debounce search
+    searchTimeoutRef.current = setTimeout(() => {
+      searchUsers(value);
+    }, 300);
+  };
+
   // Share room with a user
-  const shareRoom = async (email) => {
-    if (!email.trim()) return;
+  const shareRoom = async (username) => {
+    if (!username.trim()) return;
 
     setSharing(true);
     try {
@@ -432,7 +696,7 @@ export default function CodeEditor() {
             "Content-Type": "application/json",
             Authorization: `Bearer ${token}`,
           },
-          body: JSON.stringify({ email: email.trim() }),
+          body: JSON.stringify({ username: username.trim() }),
         }
       );
 
@@ -451,8 +715,9 @@ export default function CodeEditor() {
           const roomData = await roomResponse.json();
           setRoomInfo(roomData.room);
         }
-        setShareEmail("");
-        alert(`Room shared successfully with ${email}`);
+        setShareUsername("");
+        setUserSearchResults([]);
+        alert(`Room shared successfully with ${username}`);
       } else {
         const errorData = await response.json();
         alert(`Failed to share room: ${errorData.error}`);
@@ -910,7 +1175,7 @@ export default function CodeEditor() {
           </h2>
           <p className="text-gray-600 dark:text-gray-400 mb-4">{error}</p>
           <button
-            onClick={() => navigate("/")}
+            onClick={() => navigate("/home")}
             className="bg-blue-600 text-white px-6 py-2 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
             Back to Home
@@ -932,7 +1197,7 @@ export default function CodeEditor() {
             You don't have permission to access this room.
           </p>
           <button
-            onClick={() => navigate("/")}
+            onClick={() => navigate("/home")}
             className="text-sm bg-blue-600 text-white px-6 py-2 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
             Back to Home
@@ -941,145 +1206,6 @@ export default function CodeEditor() {
       </div>
     );
   }
-
-  // Modal component
-  const SharedWithModal = () => {
-    if (!showSharedModal || !roomInfo) return null;
-
-    const owner = roomInfo.owner;
-    const shared = roomInfo.sharedWith || [];
-
-    const handleShare = (e) => {
-      e.preventDefault();
-      if (shareEmail.trim() && !sharing) {
-        shareRoom(shareEmail);
-      }
-    };
-
-    return (
-      <div
-        className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
-        onClick={() => setShowSharedModal(false)}
-      >
-        <div
-          className="bg-white dark:bg-gray-800 rounded-lg p-6 w-96 max-w-md mx-4 max-h-[80vh] overflow-y-auto"
-          onClick={(e) => e.stopPropagation()}
-        >
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-              Share Room
-            </h3>
-            <button
-              onClick={() => setShowSharedModal(false)}
-              className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
-            >
-              <svg
-                className="w-6 h-6"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M6 18L18 6M6 6l12 12"
-                />
-              </svg>
-            </button>
-          </div>
-
-          <div className="space-y-4">
-            {/* Share with new user */}
-            <div>
-              <div className="text-sm text-gray-500 dark:text-gray-400 mb-2">
-                Share with someone new
-              </div>
-              <form
-                onSubmit={handleShare}
-                className="flex space-x-2"
-                onKeyDown={(e) => e.stopPropagation()}
-              >
-                <input
-                  ref={shareEmailRef}
-                  key="share-email-input"
-                  type="email"
-                  value={shareEmail}
-                  onChange={(e) => setShareEmail(e.target.value)}
-                  onKeyDown={(e) => {
-                    e.stopPropagation();
-                    e.nativeEvent.stopImmediatePropagation();
-                  }}
-                  onKeyUp={(e) => {
-                    e.stopPropagation();
-                    e.nativeEvent.stopImmediatePropagation();
-                  }}
-                  onInput={(e) => e.stopPropagation()}
-                  placeholder="Enter username"
-                  className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  required
-                  autoComplete="email"
-                />
-                <button
-                  type="submit"
-                  disabled={sharing || !shareEmail.trim()}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {sharing ? "Sharing..." : "Share"}
-                </button>
-              </form>
-            </div>
-
-            {/* Owner */}
-            <div>
-              <div className="text-sm text-gray-500 dark:text-gray-400 mb-1">
-                Owner
-              </div>
-              <div className="flex items-center justify-between bg-gray-50 dark:bg-gray-700 px-3 py-2 rounded">
-                <span className="text-gray-900 dark:text-white text-sm">
-                  {owner?.displayName || owner?.username}
-                </span>
-                <span className="text-xs text-blue-700 dark:text-blue-300 bg-blue-100 dark:bg-blue-900 px-2 py-0.5 rounded-full">
-                  Owner
-                </span>
-              </div>
-            </div>
-
-            {/* Shared with */}
-            <div>
-              <div className="text-sm text-gray-500 dark:text-gray-400 mb-1">
-                Shared with
-              </div>
-              {shared.length === 0 ? (
-                <div className="text-sm text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-700 px-3 py-2 rounded">
-                  Not shared with anyone yet
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  {shared.map(
-                    (s) =>
-                      s.user && (
-                        <div
-                          key={s.user._id}
-                          className="flex items-center justify-between bg-gray-50 dark:bg-gray-700 px-3 py-2 rounded"
-                        >
-                          <span className="text-gray-900 dark:text-white text-sm">
-                            {s.user.displayName || s.user.username}
-                          </span>
-                          <span className="text-xs text-gray-600 dark:text-gray-400">
-                            {new Date(s.sharedAt).toLocaleDateString()}
-                          </span>
-                        </div>
-                      )
-                  )}
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  };
 
   return (
     <div>
@@ -1090,7 +1216,7 @@ export default function CodeEditor() {
           <div className="flex items-center space-x-4">
             {/* Document Icon - Clickable Home Button */}
             <button
-              onClick={() => navigate("/")}
+              onClick={() => navigate("/home")}
               className="w-8 h-8 bg-blue-600 rounded flex items-center justify-center hover:bg-blue-700 transition-colors"
               title="Home"
             >
@@ -1564,7 +1690,20 @@ export default function CodeEditor() {
           </div>
         </div>
       )}
-      <SharedWithModal />
+      <SharedWithModal
+        showSharedModal={showSharedModal}
+        roomInfo={roomInfo}
+        setShowSharedModal={setShowSharedModal}
+        shareUsername={shareUsername}
+        handleUsernameChange={handleUsernameChange}
+        sharing={sharing}
+        shareRoom={shareRoom}
+        shareUsernameRef={shareUsernameRef}
+        userSearchResults={userSearchResults}
+        searchingUsers={searchingUsers}
+        setUserSearchResults={setUserSearchResults}
+        setShareUsername={setShareUsername}
+      />
       <Chat
         roomName={roomId}
         isVisible={showChat}

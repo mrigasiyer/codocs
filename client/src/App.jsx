@@ -8,6 +8,7 @@ import { AuthProvider } from "./contexts/AuthContext";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import { useAuth } from "./hooks/useAuth";
 import Login from "./components/Login";
+import Landing from "./pages/Landing";
 import Home from "./pages/Home";
 import CodeEditor from "./components/CodeEditor";
 import NotificationManager from "./components/NotificationManager";
@@ -39,11 +40,15 @@ function AppRoutes() {
     <Router>
       <Routes>
         <Route
-          path="/login"
-          element={isAuthenticated ? <Navigate to="/" /> : <Login />}
+          path="/"
+          element={isAuthenticated ? <Navigate to="/home" /> : <Landing />}
         />
         <Route
-          path="/"
+          path="/login"
+          element={isAuthenticated ? <Navigate to="/home" /> : <Login />}
+        />
+        <Route
+          path="/home"
           element={
             <ProtectedRoute>
               <Home />
