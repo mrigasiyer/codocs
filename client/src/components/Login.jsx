@@ -1,9 +1,12 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useAuth } from "../hooks/useAuth";
+import { useSearchParams } from "react-router-dom";
 import ThemeToggle from "./ThemeToggle";
 
 export default function Login() {
-  const [isLogin, setIsLogin] = useState(true);
+  const [searchParams] = useSearchParams();
+  const mode = searchParams.get("mode");
+  const [isLogin, setIsLogin] = useState(mode !== "register");
   const [formData, setFormData] = useState({
     email: "",
     username: "",
@@ -14,6 +17,11 @@ export default function Login() {
   const [error, setError] = useState("");
 
   const { login, register } = useAuth();
+
+  // Update login/register mode when URL changes
+  useEffect(() => {
+    setIsLogin(mode !== "register");
+  }, [mode]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();

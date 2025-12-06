@@ -31,7 +31,7 @@ export default function Landing() {
                 Sign in
               </button>
               <button
-                onClick={() => navigate("/login")}
+                onClick={() => navigate("/login?mode=register")}
                 className="px-4 py-2 text-sm font-medium bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg hover:from-blue-700 hover:to-purple-700 transition-all transform hover:scale-105 shadow-lg shadow-blue-500/25"
               >
                 Get Started
@@ -71,7 +71,7 @@ export default function Landing() {
 
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
               <button
-                onClick={() => navigate("/login")}
+                onClick={() => navigate("/login?mode=register")}
                 className="group px-8 py-4 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl font-semibold text-lg hover:from-blue-700 hover:to-purple-700 transition-all transform hover:scale-105 shadow-xl shadow-blue-500/25 flex items-center space-x-2"
               >
                 <span>Start coding now</span>
@@ -356,7 +356,7 @@ export default function Landing() {
                 Join developers who are shipping faster with Codocs
               </p>
               <button
-                onClick={() => navigate("/login")}
+                onClick={() => navigate("/login?mode=register")}
                 className="group px-8 py-4 bg-white text-blue-600 rounded-xl font-semibold text-lg hover:bg-gray-100 transition-all transform hover:scale-105 shadow-xl flex items-center space-x-2 mx-auto"
               >
                 <span>Get started for free</span>
