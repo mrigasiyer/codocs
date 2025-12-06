@@ -178,8 +178,8 @@ export default function Landing() {
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
                   <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-500"></span>
                 </span>
-                <span className="text-sm font-medium text-blue-600 dark:text-blue-400">
-                  Real-time collaboration
+                <span className="text-sm font-medium text-blue-600 dark:text-blue-400 font-mono">
+                  // sync: true
                 </span>
               </div>
 
@@ -189,11 +189,12 @@ export default function Landing() {
                   animation: "fadeInUp 0.6s ease-out 0.1s both",
                 }}
               >
-                Code together,
+                <span className="font-mono">{"> "}</span>Code together,
                 <br />
                 <span className="bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 dark:from-blue-400 dark:via-purple-400 dark:to-pink-400 bg-clip-text text-transparent">
                   ship faster
                 </span>
+                <span className="animate-pulse">_</span>
               </h1>
 
               <p
@@ -202,9 +203,14 @@ export default function Landing() {
                   animation: "fadeInUp 0.6s ease-out 0.2s both",
                 }}
               >
-                A collaborative code editor that feels like magic. Write, share,
-                and execute code with your team in real-time. No setup, no
-                hassle.
+                A collaborative code editor powered by{" "}
+                <span className="font-mono text-blue-600 dark:text-blue-400">
+                  CRDT magic
+                </span>
+                . Write, share, and execute code with your team in real-time.{" "}
+                <span className="font-mono text-gray-500 dark:text-gray-500">
+                  // No git push required
+                </span>
               </p>
 
               <div
@@ -217,7 +223,7 @@ export default function Landing() {
                   onClick={() => navigate("/login?mode=register")}
                   className="group px-8 py-4 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl font-semibold text-lg hover:from-blue-700 hover:to-purple-700 transition-all transform hover:scale-105 shadow-xl shadow-blue-500/25 flex items-center space-x-2"
                 >
-                  <span>Start coding now</span>
+                  <span className="font-mono">$ start hacking</span>
                   <svg
                     className="w-5 h-5 group-hover:translate-x-1 transition-transform"
                     fill="none"
@@ -234,11 +240,26 @@ export default function Landing() {
                 </button>
                 <div className="flex items-center space-x-3 text-sm text-gray-600 dark:text-gray-400">
                   <div className="flex -space-x-2">
-                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 ring-2 ring-white dark:ring-gray-900"></div>
-                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-purple-500 to-purple-600 ring-2 ring-white dark:ring-gray-900"></div>
-                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-pink-500 to-pink-600 ring-2 ring-white dark:ring-gray-900"></div>
+                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 ring-2 ring-white dark:ring-gray-900 flex items-center justify-center text-white text-xs font-bold">
+                      &lt;/&gt;
+                    </div>
+                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-purple-500 to-purple-600 ring-2 ring-white dark:ring-gray-900 flex items-center justify-center text-white text-xs font-bold">
+                      {}
+                    </div>
+                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-pink-500 to-pink-600 ring-2 ring-white dark:ring-gray-900 flex items-center justify-center text-white text-xs font-bold">
+                      []
+                    </div>
                   </div>
-                  <span className="font-medium">Join 1000+ developers</span>
+                  <span className="font-medium font-mono">
+                    <span className="text-purple-600 dark:text-purple-400">
+                      const
+                    </span>{" "}
+                    fun ={" "}
+                    <span className="text-green-600 dark:text-green-400">
+                      true
+                    </span>
+                    ;
+                  </span>
                 </div>
               </div>
             </div>
@@ -348,11 +369,20 @@ export default function Landing() {
           {/* Section Header */}
           <div className="text-center mb-16">
             <h2 className="text-4xl sm:text-5xl font-bold text-gray-900 dark:text-white mb-4">
-              Why choose Codocs?
+              <span className="font-mono text-purple-600 dark:text-purple-400">
+                if
+              </span>{" "}
+              (needCollaboration){" "}
+              <span className="font-mono text-blue-600 dark:text-blue-400">
+                {"{"}
+              </span>
             </h2>
-            <p className="text-xl text-gray-600 dark:text-gray-400 max-w-3xl mx-auto">
-              Stop switching between tools. Everything you need to code together
-              in one place.
+            <p className="text-xl text-gray-600 dark:text-gray-400 max-w-3xl mx-auto font-mono">
+              <span className="text-green-600 dark:text-green-400">return</span>{" "}
+              <span className="text-orange-500 dark:text-orange-400">
+                "Codocs"
+              </span>
+              ; <span className="text-gray-400">// Stop juggling tools</span>
             </p>
           </div>
 
@@ -376,92 +406,55 @@ export default function Landing() {
                     />
                   </svg>
                 </div>
-                <h3 className="text-2xl font-bold text-gray-900 dark:text-white">
-                  The Old Way
+                <h3 className="text-2xl font-bold text-gray-900 dark:text-white font-mono">
+                  <span className="text-red-600 dark:text-red-400">try</span>{" "}
+                  {"{"}
                 </h3>
               </div>
               <div className="space-y-4">
                 <div className="flex items-start space-x-3">
-                  <svg
-                    className="w-5 h-5 text-red-500 mt-0.5 flex-shrink-0"
-                    fill="currentColor"
-                    viewBox="0 0 20 20"
-                  >
-                    <path
-                      fillRule="evenodd"
-                      d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
-                      clipRule="evenodd"
-                    />
-                  </svg>
-                  <p className="text-gray-600 dark:text-gray-400">
-                    Email code snippets back and forth
+                  <span className="text-red-500 font-mono mt-0.5">✗</span>
+                  <p className="text-gray-600 dark:text-gray-400 font-mono text-sm">
+                    Email code snippets back && forth
                   </p>
                 </div>
                 <div className="flex items-start space-x-3">
-                  <svg
-                    className="w-5 h-5 text-red-500 mt-0.5 flex-shrink-0"
-                    fill="currentColor"
-                    viewBox="0 0 20 20"
-                  >
-                    <path
-                      fillRule="evenodd"
-                      d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
-                      clipRule="evenodd"
-                    />
-                  </svg>
-                  <p className="text-gray-600 dark:text-gray-400">
-                    Juggle between Slack, Zoom, and your IDE
+                  <span className="text-red-500 font-mono mt-0.5">✗</span>
+                  <p className="text-gray-600 dark:text-gray-400 font-mono text-sm">
+                    context.switch(slack, zoom, ide)
                   </p>
                 </div>
                 <div className="flex items-start space-x-3">
-                  <svg
-                    className="w-5 h-5 text-red-500 mt-0.5 flex-shrink-0"
-                    fill="currentColor"
-                    viewBox="0 0 20 20"
-                  >
-                    <path
-                      fillRule="evenodd"
-                      d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
-                      clipRule="evenodd"
-                    />
-                  </svg>
-                  <p className="text-gray-600 dark:text-gray-400">
-                    Wait for teammates to push their changes
+                  <span className="text-red-500 font-mono mt-0.5">✗</span>
+                  <p className="text-gray-600 dark:text-gray-400 font-mono text-sm">
+                    await team.push(){" "}
+                    <span className="text-gray-500">// waiting...</span>
                   </p>
                 </div>
                 <div className="flex items-start space-x-3">
-                  <svg
-                    className="w-5 h-5 text-red-500 mt-0.5 flex-shrink-0"
-                    fill="currentColor"
-                    viewBox="0 0 20 20"
-                  >
-                    <path
-                      fillRule="evenodd"
-                      d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
-                      clipRule="evenodd"
-                    />
-                  </svg>
-                  <p className="text-gray-600 dark:text-gray-400">
-                    Lose context in scattered conversations
+                  <span className="text-red-500 font-mono mt-0.5">✗</span>
+                  <p className="text-gray-600 dark:text-gray-400 font-mono text-sm">
+                    conversations.scatter(){" "}
+                    <span className="text-gray-500">// lost context</span>
                   </p>
                 </div>
                 <div className="flex items-start space-x-3">
-                  <svg
-                    className="w-5 h-5 text-red-500 mt-0.5 flex-shrink-0"
-                    fill="currentColor"
-                    viewBox="0 0 20 20"
-                  >
-                    <path
-                      fillRule="evenodd"
-                      d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
-                      clipRule="evenodd"
-                    />
-                  </svg>
-                  <p className="text-gray-600 dark:text-gray-400">
-                    Can't see what your team is working on
+                  <span className="text-red-500 font-mono mt-0.5">✗</span>
+                  <p className="text-gray-600 dark:text-gray-400 font-mono text-sm">
+                    visibility = null{" "}
+                    <span className="text-gray-500">
+                      // can't see teammates
+                    </span>
                   </p>
                 </div>
               </div>
+              <p className="mt-4 text-red-600 dark:text-red-400 font-mono text-sm">
+                {"}"}{" "}
+                <span className="text-purple-600 dark:text-purple-400">
+                  catch
+                </span>{" "}
+                (frustration) {"{"}
+              </p>
             </div>
 
             {/* The Solution */}
@@ -482,92 +475,62 @@ export default function Landing() {
                     />
                   </svg>
                 </div>
-                <h3 className="text-2xl font-bold text-gray-900 dark:text-white">
-                  The Codocs Way
+                <h3 className="text-2xl font-bold text-gray-900 dark:text-white font-mono">
+                  <span className="text-green-600 dark:text-green-400">
+                    return
+                  </span>{" "}
+                  codocs();
                 </h3>
               </div>
               <div className="space-y-4">
                 <div className="flex items-start space-x-3">
-                  <svg
-                    className="w-5 h-5 text-green-600 dark:text-green-400 mt-0.5 flex-shrink-0"
-                    fill="currentColor"
-                    viewBox="0 0 20 20"
-                  >
-                    <path
-                      fillRule="evenodd"
-                      d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
-                      clipRule="evenodd"
-                    />
-                  </svg>
-                  <p className="text-gray-700 dark:text-gray-300 font-medium">
-                    Code together in real-time, see every change instantly
+                  <span className="text-green-600 dark:text-green-400 font-mono mt-0.5">
+                    ✓
+                  </span>
+                  <p className="text-gray-700 dark:text-gray-300 font-mono text-sm font-medium">
+                    realTime.sync(){" "}
+                    <span className="text-gray-500">// instant updates</span>
                   </p>
                 </div>
                 <div className="flex items-start space-x-3">
-                  <svg
-                    className="w-5 h-5 text-green-600 dark:text-green-400 mt-0.5 flex-shrink-0"
-                    fill="currentColor"
-                    viewBox="0 0 20 20"
-                  >
-                    <path
-                      fillRule="evenodd"
-                      d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
-                      clipRule="evenodd"
-                    />
-                  </svg>
-                  <p className="text-gray-700 dark:text-gray-300 font-medium">
-                    Chat, code, and execute all in one window
+                  <span className="text-green-600 dark:text-green-400 font-mono mt-0.5">
+                    ✓
+                  </span>
+                  <p className="text-gray-700 dark:text-gray-300 font-mono text-sm font-medium">
+                    oneWindow(chat, code, console)
                   </p>
                 </div>
                 <div className="flex items-start space-x-3">
-                  <svg
-                    className="w-5 h-5 text-green-600 dark:text-green-400 mt-0.5 flex-shrink-0"
-                    fill="currentColor"
-                    viewBox="0 0 20 20"
-                  >
-                    <path
-                      fillRule="evenodd"
-                      d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
-                      clipRule="evenodd"
-                    />
-                  </svg>
-                  <p className="text-gray-700 dark:text-gray-300 font-medium">
-                    No commits needed - changes sync automatically
+                  <span className="text-green-600 dark:text-green-400 font-mono mt-0.5">
+                    ✓
+                  </span>
+                  <p className="text-gray-700 dark:text-gray-300 font-mono text-sm font-medium">
+                    !commits.required{" "}
+                    <span className="text-gray-500">// auto-sync magic</span>
                   </p>
                 </div>
                 <div className="flex items-start space-x-3">
-                  <svg
-                    className="w-5 h-5 text-green-600 dark:text-green-400 mt-0.5 flex-shrink-0"
-                    fill="currentColor"
-                    viewBox="0 0 20 20"
-                  >
-                    <path
-                      fillRule="evenodd"
-                      d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
-                      clipRule="evenodd"
-                    />
-                  </svg>
-                  <p className="text-gray-700 dark:text-gray-300 font-medium">
-                    Keep conversations right next to your code
+                  <span className="text-green-600 dark:text-green-400 font-mono mt-0.5">
+                    ✓
+                  </span>
+                  <p className="text-gray-700 dark:text-gray-300 font-mono text-sm font-medium">
+                    context.preserve(){" "}
+                    <span className="text-gray-500">// chat + code</span>
                   </p>
                 </div>
                 <div className="flex items-start space-x-3">
-                  <svg
-                    className="w-5 h-5 text-green-600 dark:text-green-400 mt-0.5 flex-shrink-0"
-                    fill="currentColor"
-                    viewBox="0 0 20 20"
-                  >
-                    <path
-                      fillRule="evenodd"
-                      d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
-                      clipRule="evenodd"
-                    />
-                  </svg>
-                  <p className="text-gray-700 dark:text-gray-300 font-medium">
-                    See exactly where everyone is working with live cursors
+                  <span className="text-green-600 dark:text-green-400 font-mono mt-0.5">
+                    ✓
+                  </span>
+                  <p className="text-gray-700 dark:text-gray-300 font-mono text-sm font-medium">
+                    team.cursors.visible{" "}
+                    <span className="text-gray-500">// see everyone</span>
                   </p>
                 </div>
               </div>
+              <p className="mt-4 text-blue-600 dark:text-blue-400 font-mono text-sm">
+                {"}"} <span className="text-gray-500">// problem solved</span>
+              </p>
             </div>
           </div>
 
@@ -656,10 +619,21 @@ export default function Landing() {
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-16">
             <h2 className="text-4xl sm:text-5xl font-bold text-gray-900 dark:text-white mb-4">
-              Everything you need to collaborate
+              Everything you need{" "}
+              <span className="font-mono text-blue-600 dark:text-blue-400">
+                &&
+              </span>{" "}
+              nothing you don't
             </h2>
-            <p className="text-xl text-gray-600 dark:text-gray-400">
-              Powerful features that make coding together effortless
+            <p className="text-xl text-gray-600 dark:text-gray-400 font-mono">
+              <span className="text-purple-600 dark:text-purple-400">
+                const
+              </span>{" "}
+              features ={" "}
+              <span className="text-green-600 dark:text-green-400">
+                ['powerful', 'simple', 'fast']
+              </span>
+              ;
             </p>
           </div>
 
@@ -684,17 +658,22 @@ export default function Landing() {
                     />
                   </svg>
                 </div>
-                <h3 className="text-2xl font-bold mb-3">Lightning Fast Sync</h3>
+                <h3 className="text-2xl font-bold mb-3 font-mono">
+                  ⚡ CRDT-Powered Sync
+                </h3>
                 <p className="text-blue-100 text-lg mb-6">
-                  Built on Yjs CRDT technology for instant synchronization. See
-                  changes as they happen, with zero lag.
+                  Built on Yjs CRDT for{" "}
+                  <span className="font-mono bg-white/10 px-2 py-1 rounded">
+                    O(1)
+                  </span>{" "}
+                  merge complexity. Zero conflicts, zero lag.
                 </p>
                 <div className="flex items-center space-x-2 text-sm">
-                  <div className="px-3 py-1 bg-white/20 backdrop-blur rounded-full">
-                    Real-time
+                  <div className="px-3 py-1 bg-white/20 backdrop-blur rounded-full font-mono">
+                    WebSocket
                   </div>
-                  <div className="px-3 py-1 bg-white/20 backdrop-blur rounded-full">
-                    CRDT-based
+                  <div className="px-3 py-1 bg-white/20 backdrop-blur rounded-full font-mono">
+                    CRDT
                   </div>
                 </div>
               </div>
@@ -872,56 +851,78 @@ export default function Landing() {
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-16">
             <h2 className="text-4xl sm:text-5xl font-bold text-gray-900 dark:text-white mb-4">
-              See it in action
+              <span className="font-mono text-blue-600 dark:text-blue-400">
+                function
+              </span>{" "}
+              howItWorks(){" "}
+              <span className="font-mono text-purple-600 dark:text-purple-400">
+                {"{"}
+              </span>
             </h2>
-            <p className="text-xl text-gray-600 dark:text-gray-400">
-              Watch how easy it is to collaborate on code
+            <p className="text-xl text-gray-600 dark:text-gray-400 font-mono">
+              <span className="text-gray-500">
+                // Three steps to collaborative coding
+              </span>
             </p>
           </div>
 
           <div className="grid lg:grid-cols-2 gap-12 items-center">
             <div className="space-y-8">
               <div className="flex items-start space-x-4">
-                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center text-white font-bold flex-shrink-0">
+                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center text-white font-bold flex-shrink-0 font-mono">
                   1
                 </div>
                 <div>
-                  <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">
-                    Create a room
+                  <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2 font-mono">
+                    <span className="text-purple-600 dark:text-purple-400">
+                      const
+                    </span>{" "}
+                    room = createRoom();
                   </h3>
                   <p className="text-gray-600 dark:text-gray-400">
-                    Start a new collaborative session in seconds. No
-                    configuration needed.
+                    Spin up a collaborative session in seconds.{" "}
+                    <span className="font-mono text-gray-500">
+                      // Zero config
+                    </span>
                   </p>
                 </div>
               </div>
 
               <div className="flex items-start space-x-4">
-                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-500 to-purple-600 flex items-center justify-center text-white font-bold flex-shrink-0">
+                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-500 to-purple-600 flex items-center justify-center text-white font-bold flex-shrink-0 font-mono">
                   2
                 </div>
                 <div>
-                  <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">
-                    Invite your team
+                  <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2 font-mono">
+                    room.invite(teammates);
                   </h3>
                   <p className="text-gray-600 dark:text-gray-400">
-                    Share your room with teammates. They'll see your changes
-                    instantly.
+                    Share your room link. They'll see changes{" "}
+                    <span className="font-mono text-blue-600 dark:text-blue-400">
+                      instantly
+                    </span>
+                    .
                   </p>
                 </div>
               </div>
 
               <div className="flex items-start space-x-4">
-                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-pink-500 to-pink-600 flex items-center justify-center text-white font-bold flex-shrink-0">
+                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-pink-500 to-pink-600 flex items-center justify-center text-white font-bold flex-shrink-0 font-mono">
                   3
                 </div>
                 <div>
-                  <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">
-                    Code together
+                  <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2 font-mono">
+                    <span className="text-green-600 dark:text-green-400">
+                      while
+                    </span>
+                    (coding) buildCoolStuff();
                   </h3>
                   <p className="text-gray-600 dark:text-gray-400">
-                    Write, edit, and run code together. See live cursors and
-                    chat in real-time.
+                    Write, edit, run code together. Live cursors + chat{" "}
+                    <span className="font-mono text-purple-600 dark:text-purple-400">
+                      &&
+                    </span>{" "}
+                    console.
                   </p>
                 </div>
               </div>
@@ -980,17 +981,19 @@ export default function Landing() {
           <div className="relative">
             <div className="absolute inset-0 bg-gradient-to-r from-blue-600 to-purple-600 rounded-3xl blur-3xl opacity-20"></div>
             <div className="relative bg-gradient-to-r from-blue-600 to-purple-600 rounded-3xl p-12 shadow-2xl">
-              <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4">
-                Ready to code together?
+              <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4 font-mono">
+                <span className="text-blue-200">while</span>(true){" "}
+                <span className="text-yellow-300">{"{"}</span>
               </h2>
-              <p className="text-xl text-blue-100 mb-8">
-                Join developers who are shipping faster with Codocs
+              <p className="text-xl text-blue-100 mb-8 font-mono">
+                &nbsp;&nbsp;collaborate();{" "}
+                <span className="text-blue-300">// Start building</span>
               </p>
               <button
                 onClick={() => navigate("/login?mode=register")}
-                className="group px-8 py-4 bg-white text-blue-600 rounded-xl font-semibold text-lg hover:bg-gray-100 transition-all transform hover:scale-105 shadow-xl flex items-center space-x-2 mx-auto"
+                className="group px-8 py-4 bg-white text-blue-600 rounded-xl font-semibold text-lg hover:bg-gray-100 transition-all transform hover:scale-105 shadow-xl flex items-center space-x-2 mx-auto font-mono"
               >
-                <span>Get started for free</span>
+                <span>$ codocs --init</span>
                 <svg
                   className="w-5 h-5 group-hover:translate-x-1 transition-transform"
                   fill="none"
@@ -1005,6 +1008,10 @@ export default function Landing() {
                   />
                 </svg>
               </button>
+              <p className="mt-4 text-blue-100 font-mono text-sm">
+                <span className="text-yellow-300">{"}"}</span>{" "}
+                <span className="text-blue-300">// Free forever</span>
+              </p>
             </div>
           </div>
         </div>
