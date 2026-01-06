@@ -2,12 +2,13 @@ import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth";
 import ThemeToggle from "../components/ThemeToggle";
+import { API_URL } from "../config/api";
 
 export default function Home() {
   const [roomName, setRoomName] = useState("");
   const [roomList, setRoomList] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [roomsFilter, setRoomsFilter] = useState("anyone"); // 'owner' | 'shared' | 'anyone'
+  const [roomsFilter, setRoomsFilter] = useState("anyone");
   const [searchQuery, setSearchQuery] = useState("");
   const [sharingRoom, setSharingRoom] = useState(null);
   const [shareUsername, setShareUsername] = useState("");
@@ -21,7 +22,7 @@ export default function Home() {
 
   const fetchRooms = useCallback(async () => {
     try {
-      const response = await fetch("http://localhost:3001/api/rooms", {
+      const response = await fetch(`${API_URL}/api/rooms`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -30,7 +31,6 @@ export default function Home() {
         const data = await response.json();
         setRoomList(data);
       } else if (response.status === 401) {
-        // Token expired or invalid
         logout();
         navigate("/login");
       }
@@ -48,7 +48,7 @@ export default function Home() {
 
     setLoading(true);
     try {
-      const response = await fetch("http://localhost:3001/api/rooms", {
+      const response = await fetch(`${API_URL}/api/rooms`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -60,7 +60,7 @@ export default function Home() {
       if (response.ok) {
         await response.json();
         setRoomName("");
-        fetchRooms(); // Refresh the list
+        fetchRooms();
         navigate(`/room/${roomName.trim()}`);
       } else {
         const error = await response.json();
@@ -80,7 +80,7 @@ export default function Home() {
     setShareLoading(true);
     try {
       const response = await fetch(
-        `http://localhost:3001/api/rooms/${roomName}/share`,
+        `${API_URL}/api/rooms/${roomName}/share`,
         {
           method: "POST",
           headers: {
@@ -96,7 +96,7 @@ export default function Home() {
         alert(`Room shared successfully with ${shareUsername}!`);
         setSharingRoom(null);
         setShareUsername("");
-        fetchRooms(); // Refresh the list
+        fetchRooms();
       } else {
         const error = await response.json();
         alert(error.error || "Error sharing room");
@@ -125,7 +125,7 @@ export default function Home() {
     setActionLoading(true);
     try {
       const response = await fetch(
-        `http://localhost:3001/api/rooms/${encodeURIComponent(
+        `${API_URL}/api/rooms/${encodeURIComponent(
           renameRoom.name
         )}`,
         {
@@ -160,7 +160,7 @@ export default function Home() {
     setActionLoading(true);
     try {
       const response = await fetch(
-        `http://localhost:3001/api/rooms/${encodeURIComponent(room.name)}`,
+        `${API_URL}/api/rooms/${encodeURIComponent(room.name)}`,
         {
           method: "DELETE",
           headers: {
@@ -183,385 +183,397 @@ export default function Home() {
     }
   };
 
+  const filteredRooms = roomList.filter((room) => {
+    const query = searchQuery.trim().toLowerCase();
+    if (query) {
+      const name = (room.name || "").toLowerCase();
+      if (!name.includes(query)) return false;
+    }
+    const isOwner = room.owner && room.owner._id === user.id;
+    const isShared = room.sharedWith.some(
+      (share) => share.user && share.user._id === user.id
+    );
+    if (roomsFilter === "owner") return isOwner;
+    if (roomsFilter === "shared") return isShared && !isOwner;
+    return true;
+  });
+
   return (
-    <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white dark:from-gray-900 dark:to-gray-800">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       {/* Header */}
-      <div className="bg-white/70 dark:bg-gray-800/70 backdrop-blur border-b border-slate-200 dark:border-gray-700">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-6">
-            <div className="flex items-center">
+      <header className="sticky top-0 bg-white/90 dark:bg-gray-900/90 backdrop-blur-md border-b border-gray-200 dark:border-gray-800 z-40">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6">
+          <div className="flex justify-between items-center h-16">
+            <div className="flex items-center space-x-3">
               <img
                 src="/logo.jpg"
-                alt="Codocs logo"
-                className="h-9 w-9 rounded-md object-cover mr-3 shadow-sm ring-1 ring-slate-200 dark:ring-gray-600"
+                alt="Codocs"
+                className="h-8 w-8 rounded-lg object-cover"
               />
-              <div>
-                <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-white leading-tight">
-                  Codocs
-                </h1>
-                <span className="block text-xs sm:text-sm text-slate-500 dark:text-gray-400">
-                  Welcome, {user?.displayName || user?.username}!
-                </span>
-              </div>
+              <span className="text-xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 dark:from-blue-400 dark:to-purple-400 bg-clip-text text-transparent">
+                Codocs
+              </span>
             </div>
-            <div className="flex items-center space-x-4">
+
+            <div className="flex items-center space-x-3">
               <ThemeToggle />
+              <div className="hidden sm:flex items-center space-x-2 text-sm text-gray-600 dark:text-gray-400">
+                <div className="w-2 h-2 rounded-full bg-green-500"></div>
+                <span>{user?.displayName || user?.username}</span>
+              </div>
               <button
                 onClick={handleLogout}
-                className="bg-red-600 text-white px-4 py-2 rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 shadow-sm"
+                className="text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white px-3 py-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
               >
-                Logout
+                Sign out
               </button>
             </div>
           </div>
         </div>
-      </div>
+      </header>
 
       {/* Main Content */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Create New Room */}
-        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm ring-1 ring-slate-200 dark:ring-gray-700 p-6 mb-8">
-          <div className="flex items-start justify-between mb-4">
-            <div>
-              <h2 className="text-xl font-semibold text-slate-900 dark:text-white">
-                Create New Room
-              </h2>
-              <p className="text-sm text-slate-500 dark:text-gray-400 mt-1">
-                Spin up a collaborative coding room and invite teammates.
-              </p>
-            </div>
-          </div>
-          <div className="flex flex-col sm:flex-row gap-3">
+      <main className="max-w-5xl mx-auto px-4 sm:px-6 py-8">
+        {/* Welcome */}
+        <div className="mb-8">
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-1">
+            Welcome back, {user?.displayName || user?.username}
+          </h1>
+          <p className="text-gray-500 dark:text-gray-400">
+            Create or join a room to start collaborating
+          </p>
+        </div>
+
+        {/* Create Room */}
+        <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-5 mb-8">
+          <h2 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
+            Create a new room
+          </h2>
+          <div className="flex gap-3">
             <input
               type="text"
               value={roomName}
               onChange={(e) => setRoomName(e.target.value)}
-              placeholder="Enter room name"
-              className="flex-1 px-3 py-2 border border-slate-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white shadow-sm"
+              placeholder="Enter room name..."
+              className="flex-1 px-4 py-2.5 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:text-white text-sm"
               onKeyDown={(e) => e.key === "Enter" && handleCreateRoom()}
             />
             <button
               onClick={handleCreateRoom}
               disabled={!roomName.trim() || loading}
-              className="bg-blue-600 text-white px-6 py-2 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
+              className="px-5 py-2.5 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg font-medium text-sm hover:from-blue-700 hover:to-purple-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {loading ? "Creating..." : "Create"}
             </button>
           </div>
         </div>
 
-        {/* Available Rooms */}
-        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm ring-1 ring-slate-200 dark:ring-gray-700">
-          <div className="px-6 py-4 border-b border-slate-200 dark:border-gray-700 flex items-center justify-between gap-3">
-            <h3 className="text-lg font-medium text-slate-900 dark:text-white">
-              Recent Rooms
-            </h3>
-            <div className="flex items-center gap-3">
-              <div className="relative hidden sm:block">
-                <input
-                  type="text"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Search documents..."
-                  className="w-56 text-sm pl-9 pr-3 py-1.5 rounded-md border border-slate-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-slate-800 dark:text-gray-100 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 placeholder-slate-400 dark:placeholder-gray-400"
-                />
-                <svg
-                  className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 dark:text-gray-400"
-                  viewBox="0 0 20 20"
-                  fill="currentColor"
-                  aria-hidden="true"
-                >
-                  <path
-                    fillRule="evenodd"
-                    d="M8.5 3a5.5 5.5 0 013.983 9.357l3.08 3.08a.75.75 0 11-1.06 1.06l-3.08-3.08A5.5 5.5 0 118.5 3zm0 1.5a4 4 0 100 8 4 4 0 000-8z"
-                    clipRule="evenodd"
+        {/* Rooms Section */}
+        <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700">
+          {/* Rooms Header */}
+          <div className="px-5 py-4 border-b border-gray-200 dark:border-gray-700">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+                Your Rooms
+              </h2>
+              <div className="flex items-center gap-2">
+                {/* Search */}
+                <div className="relative flex-1 sm:flex-none">
+                  <svg
+                    className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                    />
+                  </svg>
+                  <input
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    placeholder="Search..."
+                    className="w-full sm:w-44 text-sm pl-9 pr-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 text-gray-800 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
-                </svg>
-              </div>
-              <div className="relative">
-                <span className="sr-only">Filter rooms</span>
+                </div>
+                {/* Filter */}
                 <select
-                  id="roomsFilter"
-                  aria-label="Filter rooms"
                   value={roomsFilter}
                   onChange={(e) => setRoomsFilter(e.target.value)}
-                  className="appearance-none text-sm pl-3 pr-8 py-1.5 rounded-md border border-slate-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-slate-800 dark:text-gray-100 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 hover:bg-slate-50 dark:hover:bg-gray-600 transition-colors"
+                  className="text-sm px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 text-gray-800 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
-                  <option value="owner">Owned by me</option>
+                  <option value="anyone">All rooms</option>
+                  <option value="owner">My rooms</option>
                   <option value="shared">Shared with me</option>
-                  <option value="anyone">Owned by anyone</option>
                 </select>
-                <svg
-                  className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500 dark:text-gray-400"
-                  viewBox="0 0 20 20"
-                  fill="currentColor"
-                  aria-hidden="true"
-                >
-                  <path
-                    fillRule="evenodd"
-                    d="M5.23 7.21a.75.75 0 011.06.02L10 10.94l3.71-3.71a.75.75 0 111.08 1.04l-4.25 4.25a.75.75 0 01-1.08 0L5.21 8.27a.75.75 0 01.02-1.06z"
-                    clipRule="evenodd"
-                  />
-                </svg>
               </div>
             </div>
           </div>
-          <div className="p-6">
+
+          {/* Room List */}
+          <div className="divide-y divide-gray-100 dark:divide-gray-700">
             {roomList.length === 0 ? (
-              <div className="text-slate-500 dark:text-gray-400 text-center py-10">
-                <div className="text-4xl mb-2">✨</div>
-                <p>No rooms yet. Create your first room above!</p>
+              <div className="px-5 py-16 text-center">
+                <div className="w-12 h-12 mx-auto mb-3 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center">
+                  <svg
+                    className="w-6 h-6 text-gray-400"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={1.5}
+                      d="M12 6v6m0 0v6m0-6h6m-6 0H6"
+                    />
+                  </svg>
+                </div>
+                <p className="text-gray-600 dark:text-gray-300 font-medium">
+                  No rooms yet
+                </p>
+                <p className="text-sm text-gray-400 dark:text-gray-500 mt-1">
+                  Create your first room above to get started
+                </p>
+              </div>
+            ) : filteredRooms.length === 0 ? (
+              <div className="px-5 py-16 text-center">
+                <p className="text-gray-600 dark:text-gray-300 font-medium">
+                  No rooms found
+                </p>
+                <p className="text-sm text-gray-400 dark:text-gray-500 mt-1">
+                  Try adjusting your search or filter
+                </p>
               </div>
             ) : (
-              <div className="space-y-3">
-                {roomList
-                  .filter((room) => {
-                    const query = searchQuery.trim().toLowerCase();
-                    if (query) {
-                      const name = (room.name || "").toLowerCase();
-                      if (!name.includes(query)) return false;
-                    }
-                    const isOwner = room.owner && room.owner._id === user.id;
-                    const isShared = room.sharedWith.some(
-                      (share) => share.user && share.user._id === user.id
-                    );
-                    if (roomsFilter === "owner") return isOwner;
-                    if (roomsFilter === "shared") return isShared && !isOwner;
-                    return true; // anyone
-                  })
-                  .map((room) => {
-                    const isOwner = room.owner && room.owner._id === user.id;
-                    const isShared = room.sharedWith.some(
-                      (share) => share.user && share.user._id === user.id
-                    );
-                    const accessType = isOwner
-                      ? "Owner"
-                      : isShared
-                      ? "Shared"
-                      : "Shared";
+              filteredRooms.map((room) => {
+                const isOwner = room.owner && room.owner._id === user.id;
+                const isShared = room.sharedWith.some(
+                  (share) => share.user && share.user._id === user.id
+                );
 
-                    return (
-                      <div
-                        key={room._id}
-                        className="group flex items-center justify-between p-3 bg-slate-50 dark:bg-gray-700 rounded-md hover:bg-white dark:hover:bg-gray-600 transition-colors ring-1 ring-slate-200 dark:ring-gray-600 hover:ring-blue-200 dark:hover:ring-blue-400"
+                return (
+                  <div
+                    key={room._id}
+                    className="flex items-center px-5 py-4 hover:bg-gray-50 dark:hover:bg-gray-750 transition-colors cursor-pointer group"
+                    onClick={() => navigate(`/room/${room.name}`)}
+                  >
+                    {/* Room Icon */}
+                    <div
+                      className={`w-10 h-10 rounded-lg flex items-center justify-center mr-4 ${
+                        isOwner
+                          ? "bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400"
+                          : "bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400"
+                      }`}
+                    >
+                      <svg
+                        className="w-5 h-5"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
                       >
-                        <div
-                          className="flex-1 cursor-pointer"
-                          onClick={() => navigate(`/room/${room.name}`)}
-                        >
-                          <div className="flex items-center space-x-2">
-                            <h4 className="font-medium text-slate-900 dark:text-white">
-                              {room.name}
-                            </h4>
-                            <span
-                              className={`px-2 py-1 text-xs rounded-full ${
-                                isOwner
-                                  ? "bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200"
-                                  : isShared
-                                  ? "bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200"
-                                  : "bg-slate-100 dark:bg-gray-600 text-slate-800 dark:text-gray-200"
-                              }`}
-                            >
-                              {accessType}
-                            </span>
-                          </div>
-                          <p className="text-sm text-slate-600 dark:text-gray-300">
-                            {isOwner
-                              ? "You created this room"
-                              : `Created by ${
-                                  room.owner.displayName || room.owner.username
-                                }`}
-                          </p>
-                          <p className="text-xs text-slate-400 dark:text-gray-500">
-                            {new Date(room.createdAt).toLocaleDateString()}
-                          </p>
-                        </div>
-                        <div className="flex items-center space-x-2">
-                          {isOwner && (
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setSharingRoom(room);
-                              }}
-                              className="text-blue-700 dark:text-blue-400 hover:text-blue-900 dark:hover:text-blue-300 text-sm px-2 py-1 rounded hover:bg-blue-50 dark:hover:bg-blue-900/20"
-                            >
-                              Share
-                            </button>
-                          )}
-                          {isOwner && (
-                            <div className="relative">
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setMenuOpenId(
-                                    menuOpenId === room._id ? null : room._id
-                                  );
-                                }}
-                                className="p-1 rounded hover:bg-slate-200 dark:hover:bg-gray-600 text-slate-600 dark:text-gray-300"
-                                aria-haspopup="menu"
-                                aria-expanded={menuOpenId === room._id}
-                                title="More actions"
-                              >
-                                <svg
-                                  className="w-5 h-5"
-                                  viewBox="0 0 20 20"
-                                  fill="currentColor"
-                                  aria-hidden="true"
-                                >
-                                  <path d="M6 10a2 2 0 11-4 0 2 2 0 014 0zm6 0a2 2 0 11-4 0 2 2 0 014 0zm6 0a2 2 0 11-4 0 2 2 0 014 0z" />
-                                </svg>
-                              </button>
-                              {menuOpenId === room._id && (
-                                <div
-                                  className="absolute right-0 mt-2 w-40 bg-white dark:bg-gray-700 rounded-md shadow-lg ring-1 ring-slate-200 dark:ring-gray-600 z-10"
-                                  role="menu"
-                                  onClick={(e) => e.stopPropagation()}
-                                >
-                                  <button
-                                    className="w-full text-left px-3 py-2 text-sm hover:bg-slate-50 dark:hover:bg-gray-600 text-slate-700 dark:text-gray-200 rounded-t-md"
-                                    onClick={() => requestRenameRoom(room)}
-                                    role="menuitem"
-                                  >
-                                    Rename
-                                  </button>
-                                  <button
-                                    className="w-full text-left px-3 py-2 text-sm hover:bg-red-50 dark:hover:bg-red-900/30 text-red-600 dark:text-red-400 rounded-b-md"
-                                    onClick={() => deleteRoom(room)}
-                                    role="menuitem"
-                                  >
-                                    Delete
-                                  </button>
-                                </div>
-                              )}
-                            </div>
-                          )}
-                          <span className="text-slate-400 dark:text-gray-500 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition">
-                            →
-                          </span>
-                        </div>
-                      </div>
-                    );
-                  })}
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"
+                        />
+                      </svg>
+                    </div>
 
-                {/* Empty state when no rooms match filter */}
-                {roomList.filter((room) => {
-                  const query = searchQuery.trim().toLowerCase();
-                  if (query) {
-                    const name = (room.name || "").toLowerCase();
-                    if (!name.includes(query)) return false;
-                  }
-                  const isOwner = room.owner && room.owner._id === user.id;
-                  const isShared = room.sharedWith.some(
-                    (share) => share.user && share.user._id === user.id
-                  );
-                  if (roomsFilter === "owner") return isOwner;
-                  if (roomsFilter === "shared") return isShared && !isOwner;
-                  return true;
-                }).length === 0 && (
-                  <div className="text-slate-500 dark:text-gray-400 text-center py-10">
-                    <div className="text-4xl mb-2">🔎</div>
-                    <p>No rooms match your search and filter.</p>
+                    {/* Room Info */}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <h3 className="font-medium text-gray-900 dark:text-white truncate">
+                          {room.name}
+                        </h3>
+                        <span
+                          className={`shrink-0 text-xs px-2 py-0.5 rounded-full ${
+                            isOwner
+                              ? "bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300"
+                              : "bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-300"
+                          }`}
+                        >
+                          {isOwner ? "Owner" : "Shared"}
+                        </span>
+                      </div>
+                      <p className="text-sm text-gray-500 dark:text-gray-400 truncate">
+                        {isOwner
+                          ? `Created ${new Date(
+                              room.createdAt
+                            ).toLocaleDateString()}`
+                          : `Shared by ${
+                              room.owner.displayName || room.owner.username
+                            }`}
+                      </p>
+                    </div>
+
+                    {/* Actions */}
+                    <div
+                      className="flex items-center gap-1 ml-4"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      {isOwner && (
+                        <>
+                          <button
+                            onClick={() => setSharingRoom(room)}
+                            className="p-2 text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors"
+                            title="Share"
+                          >
+                            <svg
+                              className="w-4 h-4"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"
+                              />
+                            </svg>
+                          </button>
+                          <div className="relative">
+                            <button
+                              onClick={() =>
+                                setMenuOpenId(
+                                  menuOpenId === room._id ? null : room._id
+                                )
+                              }
+                              className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+                              title="More"
+                            >
+                              <svg
+                                className="w-4 h-4"
+                                fill="currentColor"
+                                viewBox="0 0 20 20"
+                              >
+                                <path d="M6 10a2 2 0 11-4 0 2 2 0 014 0zm6 0a2 2 0 11-4 0 2 2 0 014 0zm6 0a2 2 0 11-4 0 2 2 0 014 0z" />
+                              </svg>
+                            </button>
+                            {menuOpenId === room._id && (
+                              <div className="absolute right-0 top-full mt-1 w-32 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 z-20 overflow-hidden">
+                                <button
+                                  className="w-full text-left px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
+                                  onClick={() => requestRenameRoom(room)}
+                                >
+                                  Rename
+                                </button>
+                                <button
+                                  className="w-full text-left px-3 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20"
+                                  onClick={() => deleteRoom(room)}
+                                >
+                                  Delete
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                        </>
+                      )}
+                      <svg
+                        className="w-5 h-5 text-gray-300 dark:text-gray-600 group-hover:text-blue-500 dark:group-hover:text-blue-400 transition-colors"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M9 5l7 7-7 7"
+                        />
+                      </svg>
+                    </div>
                   </div>
-                )}
-              </div>
+                );
+              })
             )}
           </div>
         </div>
-      </div>
+      </main>
 
-      {/* Share Room Modal */}
+      {/* Share Modal */}
       {sharingRoom && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white dark:bg-gray-800 rounded-lg p-6 w-96 max-w-md mx-4 shadow-xl ring-1 ring-slate-200 dark:ring-gray-700">
-            <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">
-              Share Room: {sharingRoom.name}
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-gray-800 rounded-xl p-6 w-full max-w-sm shadow-xl">
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-1">
+              Share Room
             </h3>
-            <div className="space-y-4">
-              <div>
-                <label
-                  htmlFor="shareUsername"
-                  className="block text-sm font-medium text-slate-700 dark:text-gray-300 mb-1"
-                >
-                  Username
-                </label>
-                <input
-                  type="text"
-                  id="shareUsername"
-                  value={shareUsername}
-                  onChange={(e) => setShareUsername(e.target.value)}
-                  placeholder="Enter username to share with"
-                  className="w-full px-3 py-2 border border-slate-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white shadow-sm"
-                  onKeyDown={(e) =>
-                    e.key === "Enter" && handleShareRoom(sharingRoom.name)
-                  }
-                />
-              </div>
-              <div className="flex space-x-3">
-                <button
-                  onClick={() => handleShareRoom(sharingRoom.name)}
-                  disabled={!shareUsername.trim() || shareLoading}
-                  className="flex-1 bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {shareLoading ? "Sharing..." : "Share"}
-                </button>
-                <button
-                  onClick={() => {
-                    setSharingRoom(null);
-                    setShareUsername("");
-                  }}
-                  className="flex-1 bg-slate-200 dark:bg-gray-600 text-slate-700 dark:text-gray-300 px-4 py-2 rounded-md hover:bg-slate-300 dark:hover:bg-gray-500 focus:outline-none focus:ring-2 focus:ring-slate-500"
-                >
-                  Cancel
-                </button>
-              </div>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
+              {sharingRoom.name}
+            </p>
+            <input
+              type="text"
+              value={shareUsername}
+              onChange={(e) => setShareUsername(e.target.value)}
+              placeholder="Enter username"
+              className="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:text-white text-sm mb-4"
+              onKeyDown={(e) =>
+                e.key === "Enter" && handleShareRoom(sharingRoom.name)
+              }
+            />
+            <div className="flex gap-3">
+              <button
+                onClick={() => handleShareRoom(sharingRoom.name)}
+                disabled={!shareUsername.trim() || shareLoading}
+                className="flex-1 py-2.5 bg-blue-600 text-white rounded-lg font-medium text-sm hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {shareLoading ? "Sharing..." : "Share"}
+              </button>
+              <button
+                onClick={() => {
+                  setSharingRoom(null);
+                  setShareUsername("");
+                }}
+                className="flex-1 py-2.5 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg font-medium text-sm hover:bg-gray-200 dark:hover:bg-gray-600"
+              >
+                Cancel
+              </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* Rename Room Modal */}
+      {/* Rename Modal */}
       {renameRoom && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white dark:bg-gray-800 rounded-lg p-6 w-96 max-w-md mx-4 shadow-xl ring-1 ring-slate-200 dark:ring-gray-700">
-            <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-gray-800 rounded-xl p-6 w-full max-w-sm shadow-xl">
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-1">
               Rename Room
             </h3>
-            <div className="space-y-4">
-              <div>
-                <label
-                  htmlFor="newRoomName"
-                  className="block text-sm font-medium text-slate-700 dark:text-gray-300 mb-1"
-                >
-                  New name
-                </label>
-                <input
-                  type="text"
-                  id="newRoomName"
-                  value={newRoomName}
-                  onChange={(e) => setNewRoomName(e.target.value)}
-                  className="w-full px-3 py-2 border border-slate-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white shadow-sm"
-                  placeholder="Enter new room name"
-                  onKeyDown={(e) => e.key === "Enter" && submitRenameRoom()}
-                />
-              </div>
-              <div className="flex space-x-3">
-                <button
-                  onClick={submitRenameRoom}
-                  disabled={!newRoomName.trim() || actionLoading}
-                  className="flex-1 bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {actionLoading ? "Saving..." : "Save"}
-                </button>
-                <button
-                  onClick={() => {
-                    setRenameRoom(null);
-                    setNewRoomName("");
-                  }}
-                  className="flex-1 bg-slate-200 dark:bg-gray-600 text-slate-700 dark:text-gray-300 px-4 py-2 rounded-md hover:bg-slate-300 dark:hover:bg-gray-500 focus:outline-none focus:ring-2 focus:ring-slate-500"
-                >
-                  Cancel
-                </button>
-              </div>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
+              {renameRoom.name}
+            </p>
+            <input
+              type="text"
+              value={newRoomName}
+              onChange={(e) => setNewRoomName(e.target.value)}
+              placeholder="New room name"
+              className="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:text-white text-sm mb-4"
+              onKeyDown={(e) => e.key === "Enter" && submitRenameRoom()}
+            />
+            <div className="flex gap-3">
+              <button
+                onClick={submitRenameRoom}
+                disabled={!newRoomName.trim() || actionLoading}
+                className="flex-1 py-2.5 bg-blue-600 text-white rounded-lg font-medium text-sm hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {actionLoading ? "Saving..." : "Save"}
+              </button>
+              <button
+                onClick={() => {
+                  setRenameRoom(null);
+                  setNewRoomName("");
+                }}
+                className="flex-1 py-2.5 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg font-medium text-sm hover:bg-gray-200 dark:hover:bg-gray-600"
+              >
+                Cancel
+              </button>
             </div>
           </div>
         </div>

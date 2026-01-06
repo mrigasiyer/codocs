@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useAuth } from "../hooks/useAuth";
 import { useSearchParams } from "react-router-dom";
 import ThemeToggle from "./ThemeToggle";
+import { API_URL } from "../config/api";
 
 export default function Login() {
   const [searchParams] = useSearchParams();
@@ -58,7 +59,7 @@ export default function Login() {
   };
 
   const handleGoogleLogin = () => {
-    window.location.href = "http://localhost:3001/api/auth/google";
+    window.location.href = `${API_URL}/api/auth/google`;
   };
 
   return (

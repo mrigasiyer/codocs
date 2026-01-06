@@ -1,4 +1,5 @@
 import React, { createContext, useState, useEffect } from "react";
+import { API_URL } from "../config/api";
 
 export const AuthContext = createContext();
 
@@ -12,7 +13,7 @@ export const AuthProvider = ({ children }) => {
       if (token) {
         try {
           // Verify token with server
-          const response = await fetch("http://localhost:3001/api/rooms", {
+          const response = await fetch(`${API_URL}/api/rooms`, {
             headers: {
               Authorization: `Bearer ${token}`,
             },
@@ -82,7 +83,7 @@ export const AuthProvider = ({ children }) => {
 
   const login = async (email, password) => {
     try {
-      const response = await fetch("http://localhost:3001/api/auth/login", {
+      const response = await fetch(`${API_URL}/api/auth/login`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -109,7 +110,7 @@ export const AuthProvider = ({ children }) => {
 
   const register = async (email, username, password, displayName) => {
     try {
-      const response = await fetch("http://localhost:3001/api/auth/register", {
+      const response = await fetch(`${API_URL}/api/auth/register`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

@@ -24,7 +24,7 @@ export default function Chat({ roomName, isVisible, onToggle }) {
   // Initialize socket connection
   useEffect(() => {
     if (roomName) {
-      const newSocket = io("http://localhost:3001", {
+      const newSocket = io(API_URL, {
         auth: {
           token: token,
         },
@@ -78,7 +78,7 @@ export default function Chat({ roomName, isVisible, onToggle }) {
       try {
         setLoading(true);
         const response = await fetch(
-          `http://localhost:3001/api/rooms/${roomName}/messages`,
+          `${API_URL}/api/rooms/${roomName}/messages`,
           {
             headers: {
               Authorization: `Bearer ${token}`,

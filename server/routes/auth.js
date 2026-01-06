@@ -1,3 +1,4 @@
+require("dotenv").config();
 const express = require("express");
 const jwt = require("jsonwebtoken");
 const passport = require("passport");
@@ -5,8 +6,8 @@ const GoogleStrategy = require("passport-google-oauth20").Strategy;
 const User = require("../models/User");
 const router = express.Router();
 
-// JWT secret (we'll move this to environment variables later)
-const JWT_SECRET = "your-secret-key-for-now";
+// JWT secret from environment variables
+const JWT_SECRET = process.env.JWT_SECRET || "your-secret-key-for-now";
 
 // Configure Passport
 passport.use(
@@ -15,7 +16,7 @@ passport.use(
       clientID: process.env.GOOGLE_CLIENT_ID || "your-google-client-id",
       clientSecret:
         process.env.GOOGLE_CLIENT_SECRET || "your-google-client-secret",
-      callbackURL: "/api/auth/google/callback",
+      callbackURL: process.env.GOOGLE_CALLBACK_URL || "/api/auth/google/callback",
     },
     async (accessToken, refreshToken, profile, done) => {
       try {

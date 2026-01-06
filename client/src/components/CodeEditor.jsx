@@ -7,6 +7,7 @@ import { useEffect, useRef, useState } from "react";
 import { useAuth } from "../hooks/useAuth";
 import { useTheme } from "../hooks/useTheme";
 import Chat from "./Chat";
+import { API_URL, WS_URL } from "../config/api";
 
 // SharedWithModal component - moved outside to prevent re-creation on every render
 const SharedWithModal = ({
@@ -563,7 +564,7 @@ export default function CodeEditor() {
     setActionLoading(true);
     try {
       const resp = await fetch(
-        `http://localhost:3001/api/rooms/${encodeURIComponent(roomId)}`,
+        `${API_URL}/api/rooms/${encodeURIComponent(roomId)}`,
         {
           method: "PATCH",
           headers: {
@@ -643,7 +644,7 @@ export default function CodeEditor() {
     setSearchingUsers(true);
     try {
       const response = await fetch(
-        `http://localhost:3001/api/users/search?query=${encodeURIComponent(
+        `${API_URL}/api/users/search?query=${encodeURIComponent(
           query.trim()
         )}`,
         {
@@ -689,7 +690,7 @@ export default function CodeEditor() {
     setSharing(true);
     try {
       const response = await fetch(
-        `http://localhost:3001/api/rooms/${roomId}/share`,
+        `${API_URL}/api/rooms/${roomId}/share`,
         {
           method: "POST",
           headers: {
@@ -704,7 +705,7 @@ export default function CodeEditor() {
         await response.json();
         // Refresh room info to show updated sharing
         const roomResponse = await fetch(
-          `http://localhost:3001/api/rooms/${roomId}/access`,
+          `${API_URL}/api/rooms/${roomId}/access`,
           {
             headers: {
               Authorization: `Bearer ${token}`,
@@ -786,7 +787,7 @@ export default function CodeEditor() {
 
     // ✅ Connect to Yjs server with room ID in the path
     const provider = new WebsocketProvider(
-      `ws://localhost:3001/`,
+      `${WS_URL}/`,
       roomId,
       ydoc
     );

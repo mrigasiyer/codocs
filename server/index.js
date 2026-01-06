@@ -1,5 +1,7 @@
+require("dotenv").config();
 const express = require("express");
 const http = require("http");
+const path = require("path");
 const cors = require("cors");
 const session = require("express-session");
 const passport = require("passport");
@@ -17,8 +19,8 @@ const Message = require("./models/Chat");
 // Import auth routes
 const authRouter = require("./routes/auth");
 
-// JWT secret (should match auth.js)
-const JWT_SECRET = "your-secret-key-for-now";
+// JWT secret from environment variables
+const JWT_SECRET = process.env.JWT_SECRET || "your-secret-key-for-now";
 
 // Authentication middleware
 const authenticateToken = async (req, res, next) => {
@@ -43,7 +45,13 @@ const authenticateToken = async (req, res, next) => {
 };
 
 const app = express();
-app.use(cors());
+
+// CORS configuration - allow requests from frontend
+const corsOptions = {
+  origin: process.env.FRONTEND_URL || "*",
+  credentials: true,
+};
+app.use(cors(corsOptions));
 app.use(express.json());
 
 // ✅ Connect to MongoDB
@@ -678,7 +686,23 @@ server.on("upgrade", (request, socket, head) => {
   socket.destroy();
 });
 
-const PORT = 3001;
+// Serve static files from the React app build (only in production)
+// In development, Vite dev server handles this
+if (process.env.NODE_ENV === "production") {
+  const buildPath = path.join(__dirname, "../client/dist");
+  app.use(express.static(buildPath));
+
+  // Serve React app for all non-API routes
+  app.get("*", (req, res) => {
+    // Don't serve index.html for API routes
+    if (req.path.startsWith("/api")) {
+      return res.status(404).json({ error: "API route not found" });
+    }
+    res.sendFile(path.join(buildPath, "index.html"));
+  });
+}
+
+const PORT = process.env.PORT || 3001;
 server.listen(PORT, () =>
   console.log(`🚀 Codocs server running on port ${PORT}`)
 );
