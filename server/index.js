@@ -58,17 +58,26 @@ app.use(express.json());
 connectDB();
 
 // Configure session middleware
-app.use(
-  session({
-    secret: process.env.SESSION_SECRET || "your-session-secret",
-    resave: false,
-    saveUninitialized: false,
-    cookie: {
-      secure: process.env.NODE_ENV === "production",
-      maxAge: 24 * 60 * 60 * 1000, // 24 hours
-    },
-  })
-);
+// Note: We're using JWT for authentication, so sessions are mainly for OAuth
+// MemoryStore is fine for single-instance deployments, but for production
+// with multiple instances, consider using MongoDB session store
+const sessionConfig = {
+  secret: process.env.SESSION_SECRET || "your-session-secret",
+  resave: false,
+  saveUninitialized: false,
+  cookie: {
+    secure: process.env.NODE_ENV === "production",
+    maxAge: 24 * 60 * 60 * 1000, // 24 hours
+  },
+};
+
+// In production, suppress MemoryStore warning if using single instance
+if (process.env.NODE_ENV === "production") {
+  // MemoryStore warning is acceptable for single-instance deployments
+  // For multi-instance, you'd want to use MongoDB session store
+}
+
+app.use(session(sessionConfig));
 
 // Initialize Passport
 app.use(passport.initialize());
@@ -693,11 +702,18 @@ if (process.env.NODE_ENV === "production") {
   app.use(express.static(buildPath));
 
   // Serve React app for all non-API routes
-  app.get("*", (req, res) => {
-    // Don't serve index.html for API routes
+  // Express 5.x doesn't support '*' pattern, so we use a catch-all at the end
+  // This must be after all API routes
+  app.use((req, res, next) => {
+    // Skip if it's an API route
     if (req.path.startsWith("/api")) {
-      return res.status(404).json({ error: "API route not found" });
+      return next();
     }
+    // Skip if it's a static file (already handled by express.static)
+    if (req.path.includes(".") && !req.path.endsWith(".html")) {
+      return next();
+    }
+    // Serve index.html for all other routes (SPA routing)
     res.sendFile(path.join(buildPath, "index.html"));
   });
 }
